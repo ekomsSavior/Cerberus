@@ -83,6 +83,7 @@ python3 cerberus.py
 - **PHP Injection**: system(), exec(), shell_exec(), passthru(), backticks
 - **Template Injection**: Jinja2, Smarty, and other template engines
 - **Parameter Testing**: ip, host, cmd, command, exec, system, query, input, data, username, password, file, path
+- **COMMAND EXECUTION takes a while please be patient.**
 
 ## Privilege Escalation Techniques
 
