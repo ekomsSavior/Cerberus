@@ -2,6 +2,9 @@
 
 ![image0(6)](https://github.com/user-attachments/assets/ad22fcf5-2fcb-4592-8f5f-79fea1975008)
 
+<img width="1024" height="1536" alt="ChatGPT Image Nov 3, 2025, 04_48_41 PM" src="https://github.com/user-attachments/assets/b193a2ab-0f4c-4f92-9dc5-c6585df29f5b" />
+
+
 ## Overview
 
 Cerberus-CVE is a comprehensive scanning and exploitation framework for two critical CVEs with real command execution and post-exploitation automation.
@@ -110,6 +113,6 @@ This tool is intended exclusively for:
 
 Users must obtain proper authorization before scanning or testing any system. The developer assumes no responsibility for misuse of this tool.
 
-![422821626_5ddff824-bbc5-4c3d-8aa6-46d7ae4f84f6](https://github.com/user-attachments/assets/0a8d9ef5-ac12-46dc-aa29-f520240cbdf6)
+<img width="1024" height="1536" alt="ChatGPT Image Nov 3, 2025, 04_48_41 PM" src="https://github.com/user-attachments/assets/592c1c01-ff00-44b1-9061-0039ac3891c6" />
 
 
