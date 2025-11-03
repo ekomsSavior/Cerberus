@@ -37,8 +37,8 @@ Cerberus-CVE is a comprehensive scanning and exploitation framework for two crit
 ## Installation
 
 ```bash
-git clone https://github.com/ekomsSavior/Cerebus.git
-cd Cerebus
+git clone https://github.com/ekomsSavior/Cerberus.git
+cd Cerberus
 
 pip install requests pysocks urllib3 readline --break-system-packages
 
