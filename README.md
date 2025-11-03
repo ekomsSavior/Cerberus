@@ -110,3 +110,6 @@ This tool is intended exclusively for:
 
 Users must obtain proper authorization before scanning or testing any system. The developer assumes no responsibility for misuse of this tool.
 
+![422821626_5ddff824-bbc5-4c3d-8aa6-46d7ae4f84f6](https://github.com/user-attachments/assets/0a8d9ef5-ac12-46dc-aa29-f520240cbdf6)
+
+
