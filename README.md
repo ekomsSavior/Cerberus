@@ -227,7 +227,7 @@ Comprehensive parameter testing across:
 | Network Recon     | Condt | None (if tools exist)    |
 | PrivEsc Detection |  Full | None                     |
 | PrivEsc Exploit   |Guided | Manual command execution |
-| Lateral Mvmt Disc |  Full | Manual exploitation      |
+| Lateral Mvmt      |  Full | Manual exploitation      |
 | Prstst tmplt      | Basic | Full customization       |
 
 ### **Pro Tips for Maximum Effectiveness**
