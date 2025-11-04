@@ -16,17 +16,27 @@ git clone https://github.com/ekomsSavior/Cerberus.git
 cd Cerberus
 
 # Install dependencies
+
+sudo apt update && sudo apt install tor
+
 pip install requests pysocks urllib3 readline --break-system-packages
 
-sudo systemctl start tor@default
 ```
 
 ![Installation](https://github.com/user-attachments/assets/7709e3f8-7f2e-4c35-b1d3-ded8b57cf8d7)
 
 ## Usage
 
+always start tor first
+
 ```bash
-python3 cerberus.py
+sudo systemctl start tor@default
+```
+
+then run Cerberus
+
+```bash
+sudo python3 cerberus.py
 ```
 
 The framework operates in interactive mode, guiding you through:
