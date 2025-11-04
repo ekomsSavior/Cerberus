@@ -23,7 +23,8 @@ pip install requests pysocks urllib3 readline --break-system-packages
 
 ```
 
-![Installation](https://github.com/user-attachments/assets/7709e3f8-7f2e-4c35-b1d3-ded8b57cf8d7)
+![Screenshot_2025-11-04_02_21_16](https://github.com/user-attachments/assets/def699c1-3a3c-476b-9e8b-0891f173c14c)
+
 
 ## Usage
 
