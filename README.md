@@ -260,7 +260,7 @@ Comprehensive parameter testing across:
 This framework is intended exclusively for:
 - Authorized penetration testing with written permission
 
-**Cerberus Security Assessment Framework v5.1 - Advanced Intelligence for Modern Security Testing**
+**# Cerberus Security Assessment & Exploitation**
 
 <img width="1024" height="1536" alt="Cerberus Demonstration" src="https://github.com/user-attachments/assets/592c1c01-ff00-44b1-9061-0039ac3891c6" />
 
