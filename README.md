@@ -9,6 +9,8 @@ Cerberus is a comprehensive, intelligent security assessment framework featuring
 
 **Disclaimer: This tool is for authorized security testing, educational purposes, and professional penetration testing only.**
 
+---
+
 ## Installation
 
 ```bash
@@ -25,6 +27,7 @@ pip install requests pysocks urllib3 readline --break-system-packages
 
 ![Screenshot_2025-11-04_02_21_16](https://github.com/user-attachments/assets/def699c1-3a3c-476b-9e8b-0891f173c14c)
 
+---
 
 ## Usage
 
@@ -105,6 +108,7 @@ Comprehensive parameter testing across:
 - **Cron Job Examination**: `/etc/cron*`, `/var/spool/cron` analysis
 - **Capability Discovery**: `getcap -r /` capability enumeration
 - **Writable File Identification**: System file permission analysis
+  
 ---
 
 # Post-Exploitation Menu
@@ -253,6 +257,8 @@ Comprehensive parameter testing across:
 - **Credential Storage**: Secure password and configuration data management
 - **SSH Key Repository**: Extracted SSH keys and authorized_keys files
 - **Sensitive Data**: Protected storage of exfiltrated information
+- 
+---
 
 ## Legal and Ethical Use
 
@@ -260,7 +266,7 @@ Comprehensive parameter testing across:
 This framework is intended exclusively for:
 - Authorized penetration testing with written permission
 
-**# Cerberus Security Assessment & Exploitation**
+** Cerberus Security Assessment & Exploitation**
 
 <img width="1024" height="1536" alt="Cerberus Demonstration" src="https://github.com/user-attachments/assets/592c1c01-ff00-44b1-9061-0039ac3891c6" />
 
