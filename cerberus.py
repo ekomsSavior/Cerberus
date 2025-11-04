@@ -457,10 +457,6 @@ class AdvancedRCEExploiter:
                 continue
         return None
 
-# =============================================================================
-# ENHANCED: IntelligentRCEExploiter with Advanced Capabilities
-# =============================================================================
-
 class IntelligentRCEExploiter:
     """Enhanced RCE exploitation with advanced techniques"""
     
@@ -737,10 +733,6 @@ class IntelligentRCEExploiter:
             return True
             
         return any(indicator in content for indicator in success_indicators)
-
-# =============================================================================
-# ENHANCED: ServiceSpecificExploiter with Advanced Techniques
-# =============================================================================
 
 class ServiceSpecificExploiter:
     """Enhanced service-specific exploitation"""
@@ -1238,10 +1230,6 @@ class NetworkScanner:
         
         return open_ports
 
-# =============================================================================
-# ENHANCED: CommandExecutionEngine with Advanced RCE
-# =============================================================================
-
 class CommandExecutionEngine:
     """ENHANCED command execution with advanced RCE exploitation"""
     
@@ -1687,11 +1675,6 @@ class RealShellManager:
         
         return real_data
 
-
-# =============================================================================
-# ENHANCED: WebVulnerabilityScanner with Immediate Exploitation
-# =============================================================================
-
 class WebVulnerabilityScanner:
     """ENHANCED web vulnerability scanning with immediate exploitation"""
     
@@ -1851,10 +1834,6 @@ class WebVulnerabilityScanner:
                 continue
         
         return len(self.found_rce_endpoints) > 0
-
-# =============================================================================
-# EXISTING CLASSES (Keep as is)
-# =============================================================================
 
 class NetworkExploiter:
     """Enhanced network service exploitation"""
@@ -2025,10 +2004,6 @@ class PrivilegeEscalation:
         
         return False
 
-# =============================================================================
-# ENHANCED: ComprehensiveScanner with Intelligent Exploitation
-# =============================================================================
-
 class ComprehensiveScanner:
     """ENHANCED main scanner with intelligent exploitation"""
     
@@ -2052,8 +2027,8 @@ class ComprehensiveScanner:
 ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░ 
  ░▒▓██████▓▒░░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░  
                                                                                                                           
-     Cerberus Security Assessment Framework v5.1 - Enhanced
-           by: ek0ms savi0r
+               Cerberus Security Assessment & Exploitation
+                 ✩₊˚.⋆☾⋆⁺₊✧ by: ek0ms savi0r ✩₊˚.⋆☾⋆⁺₊✧
 {Colors.END}""")
 
     def run_comprehensive_assessment(self):
@@ -2187,10 +2162,6 @@ class ComprehensiveScanner:
             self.tor_manager.disable_tor()
         
         print(f"\n{Colors.GREEN}[+] Assessment complete!{Colors.END}")
-
-    # =========================================================================
-    # EXISTING METHODS (Keep as is)
-    # =========================================================================
 
     def _establish_persistence(self, shell_manager: RealShellManager):
         """Establish persistence mechanisms"""
