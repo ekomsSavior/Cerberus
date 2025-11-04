@@ -1,12 +1,11 @@
-# Cerberus Security Assessment Framework v5.1
-
+# Cerberus Security Assessment & Exploitation
 ![Cerberus Banner](https://github.com/user-attachments/assets/ad22fcf5-2fcb-4592-8f5f-79fea1975008)
 
 <img width="1024" height="1536" alt="Cerberus Interface" src="https://github.com/user-attachments/assets/b193a2ab-0f4c-4f92-9dc5-c6585df29f5b" />
 
 ## Overview
 
-Cerberus v5.1 is a comprehensive, intelligent security assessment framework featuring advanced RCE exploitation, real command execution, and automated post-exploitation capabilities. This enhanced version represents a complete evolution from previous iterations with sophisticated exploitation techniques and intelligent vulnerability assessment.
+Cerberus is a comprehensive, intelligent security assessment framework featuring advanced RCE exploitation, real command execution, and automated post-exploitation capabilities. This enhanced version represents a complete evolution from previous iterations with sophisticated exploitation techniques and intelligent vulnerability assessment.
 
 **Disclaimer: This tool is for authorized security testing, educational purposes, and professional penetration testing only.**
 
@@ -19,7 +18,6 @@ cd Cerberus
 # Install dependencies
 pip install requests pysocks urllib3 readline --break-system-packages
 
-# Optional: Start TOR service
 sudo systemctl start tor@default
 ```
 
