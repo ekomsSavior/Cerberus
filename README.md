@@ -105,8 +105,9 @@ Comprehensive parameter testing across:
 - **Cron Job Examination**: `/etc/cron*`, `/var/spool/cron` analysis
 - **Capability Discovery**: `getcap -r /` capability enumeration
 - **Writable File Identification**: System file permission analysis
+---
 
-### Post-Exploitation Menu
+# Post-Exploitation Menu
 
 ![20868D7B-209C-4318-B2FF-14A7E0FB83C5](https://github.com/user-attachments/assets/fbd79a85-23bb-4e78-a773-7e65dca50866)
 
