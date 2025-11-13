@@ -954,6 +954,36 @@ class ServiceSpecificExploiter:
         print(f"{Colors.YELLOW}[!] SSH service detected - consider using hydra or medusa for brute force{Colors.END}")
         return False
     
+    def _exploit_telnet(self):
+        """Advanced Telnet exploitation"""
+        print(f"{Colors.CYAN}[>] Testing Telnet service...{Colors.END}")
+    
+        try:
+            # Try common Telnet credentials
+            common_creds = [
+                ('root', 'root'), ('admin', 'admin'), 
+                ('test', 'test'), ('user', 'user'),
+                ('guest', 'guest'), ('default', 'default')
+            ]
+        
+            for username, password in common_creds:
+                print(f"{Colors.YELLOW}[!] Try Telnet: {username}:{password}{Colors.END}")
+        
+            # Check if Telnet service is accessible
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            result = sock.connect_ex((self.target, 23))
+            sock.close()
+        
+            if result == 0:
+                print(f"{Colors.YELLOW}[!] Telnet service active - check for default credentials and known vulnerabilities{Colors.END}")
+                return True
+            
+        except Exception as e:
+            print(f"{Colors.RED}[-] Telnet exploitation failed: {str(e)}{Colors.END}")
+    
+        return False
+    
     def _exploit_dns_advanced(self):
         """Advanced DNS exploitation"""
         try:
