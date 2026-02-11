@@ -54,7 +54,7 @@ The framework operates in interactive mode, guiding you through:
 
 ## New: Windows CVE Exploitation Modules (2026)
 
-Cerberus now features **active, non-simulated exploitation** of six high-impact Windows vulnerabilities. These modules automatically detect Windows targets via SMB banner or HTTP Server headers and execute real payloads against exposed services.
+Cerberus now features **active vuln scanning & exploitation** of six high-impact Windows vulnerabilities. These modules automatically detect Windows targets via SMB banner or HTTP Server headers and execute real payloads against exposed services.
 
 ### CVE-2026-21510 - Windows Shell Protection Mechanism Failure
 - **Vector**: Crafted .url / .lnk files via WebDAV/SMB shares
