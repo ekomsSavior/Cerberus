@@ -1,5 +1,5 @@
 <p align="center">
-# Cerberus Security Assessment & Exploitation
+Cerberus Security Assessment & Exploitation
 </p>
 <p align="center">
 
