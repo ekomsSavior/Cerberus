@@ -1,11 +1,6 @@
-<p align="center">
-
-  <img src="https://img.shields.io/badge/ek0ms%20savi0r-yellow.svg" alt="ek0ms_savi0r">
- 
-
 ![Cerberus Banner](https://github.com/user-attachments/assets/ad22fcf5-2fcb-4592-8f5f-79fea1975008)
 
-</p>
+
 <img width="1024" height="1536" alt="Cerberus Interface" src="https://github.com/user-attachments/assets/b193a2ab-0f4c-4f92-9dc5-c6585df29f5b" />
 
 ## Overview
