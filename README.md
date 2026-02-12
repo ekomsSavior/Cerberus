@@ -1,8 +1,5 @@
 ![Cerberus Banner](https://github.com/user-attachments/assets/ad22fcf5-2fcb-4592-8f5f-79fea1975008)
 
-
-<img width="1024" height="1536" alt="Cerberus Interface" src="https://github.com/user-attachments/assets/b193a2ab-0f4c-4f92-9dc5-c6585df29f5b" />
-
 ## Overview
 
 Cerberus is a comprehensive, intelligent security assessment framework featuring advanced RCE exploitation, real command execution, automated post-exploitation capabilities, and integrated Windows CVE exploitation. This enhanced version represents a complete evolution from previous iterations with sophisticated exploitation techniques and intelligent vulnerability assessment across multiple operating systems.
@@ -325,6 +322,9 @@ This framework is intended exclusively for:
 - Authorized penetration testing with written permission
 
 **Cerberus Security Assessment & Exploitation**
+
+
+<img width="1024" height="1536" alt="Cerberus Interface" src="https://github.com/user-attachments/assets/b193a2ab-0f4c-4f92-9dc5-c6585df29f5b" />
 
 <img width="1024" height="1536" alt="Cerberus Demonstration" src="https://github.com/user-attachments/assets/592c1c01-ff00-44b1-9061-0039ac3891c6" />
 
