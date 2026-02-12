@@ -323,9 +323,6 @@ This framework is intended exclusively for:
 
 **Cerberus Security Assessment & Exploitation**
 
-
-<img width="1024" height="1536" alt="Cerberus Interface" src="https://github.com/user-attachments/assets/b193a2ab-0f4c-4f92-9dc5-c6585df29f5b" />
-
 <img width="1024" height="1536" alt="Cerberus Demonstration" src="https://github.com/user-attachments/assets/592c1c01-ff00-44b1-9061-0039ac3891c6" />
 
 ![Cerberus Architecture](https://github.com/user-attachments/assets/03ab0d16-b536-4dac-8bfa-836526a17fb0)
