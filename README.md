@@ -1,5 +1,11 @@
+<p align="center">
 # Cerberus Security Assessment & Exploitation
-# by: ek0ms savi0r
+</p>
+<p align="center">
+
+  <img src="https://img.shields.io/badge/ek0ms%20savi0r-yellow.svg" alt="ek0ms_savi0r">
+ 
+</p>
 
 ![Cerberus Banner](https://github.com/user-attachments/assets/ad22fcf5-2fcb-4592-8f5f-79fea1975008)
 
